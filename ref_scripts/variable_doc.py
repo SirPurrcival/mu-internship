@@ -29,6 +29,9 @@ glif_psc_params = {
     }
 
 
+
+## If you ever feel like know what's going on in a neuron
+## use nest.GetStatus()! Works with pretty much all things nest
 import nest
 nya = nest.Create("glif_psc")
 nest.GetStatus(nya)

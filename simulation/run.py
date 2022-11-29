@@ -27,7 +27,7 @@ neuron_params_ex = {"C_m":     0.5, #0.5     ## capacity of membrane
                   "refractory_input": False  ## if true, do not discard input during refractory period
                   }
 neuron_params_in = {"C_m":     0.2, #0.2
-                  "tau_m":   20.,
+                  "tau_m":   20.2,
                   "t_ref":   1.0,#1.0
                   "E_L":     0.0,
                   "V_reset": 0.0,
