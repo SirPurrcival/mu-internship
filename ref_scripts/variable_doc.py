@@ -18,14 +18,15 @@ iaf_psc_delta_params = {"C_m":     0.5, #0.5     ## capacity of membrane
                   }
 
 ## Model documentation: https://nest-simulator.readthedocs.io/en/stable/models/glif_psc.html
-glif_psc_params = {
+glif_cond_params = {
     "V_m":          -78.85,     ## Membrane potential in mV
     "V_th":         -51.68,     ## instantaneous threshold in mV
-    "g":              9.43,     ## Membrance conduction in nS
+    "g_m":             9.4,     ## Membrance leak conductance in nS
     "E_L":          -78.85,     ## Resting membrane potential in mV
-    "C_m":          -58.72,     ## Capacitance of membrane in picoFarad
+    "C_m":             0.5,     ## Capacitance of membrane in picoFarad
     "t_ref":          3.75,     ## Duration of refractory period in ms
-    "V_reset":       -78.85     ## Reset potential of the membrane in mV (GLIF1 or GLIF3)
+    "V_reset":      -78.85,     ## Reset potential of the membrane in mV (GLIF1 or GLIF3)
+    "tau_minus":        20      ## Synapse decay time(??)
     }
 
 
@@ -33,5 +34,14 @@ glif_psc_params = {
 ## If you ever feel like know what's going on in a neuron
 ## use nest.GetStatus()! Works with pretty much all things nest
 import nest
-nya = nest.Create("glif_psc")
-nest.GetStatus(nya)
+neuronone = nest.Create("glif_cond", params=glif_cond_params)
+neurontwo = nest.Create("glif_cond", params=glif_cond_params)
+
+nest.Connect(neuronone, neurontwo,
+             syn_spec={'receptor_type': 1})
+
+nest.GetStatus(neurontwo)
+
+
+
+

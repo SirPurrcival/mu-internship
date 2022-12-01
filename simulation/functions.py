@@ -9,7 +9,9 @@ import itertools
 
 # Create classes
 class Network():
-    def __init__(self, num_neurons, rho, eps, g, eta, J_ex, J_in, neuron_params_ex, neuron_params_in, n_rec_ex, n_rec_in, rec_start, rec_stop):
+    def __init__(self, num_neurons, rho, eps, g, eta, J_ex, J_in, 
+                 neuron_params_ex, neuron_params_in, n_rec_ex, n_rec_in, 
+                 rec_start, rec_stop, nu_ext, nu_in, delay, w_plus, w_i):
         self.num_neurons = num_neurons
         self.num_ex = int((1 - rho) * num_neurons)  # number of excitatory neurons
         self.num_in = int(rho * num_neurons)        # number of inhibitory neurons
@@ -23,58 +25,121 @@ class Network():
         self.rec_stop = rec_stop
         self.neuron_params_ex = neuron_params_ex          # neuron params
         self.neuron_params_in = neuron_params_in
-        self.ext_rate = (self.neuron_params_ex['V_th']   # the external rate needs to be adapted to provide enough input (Brunel 2000)
-                         / (J_ex * self.c_ex * self.neuron_params_ex['tau_m'])
-                         * eta * 1000. * self.c_ex)
+        self.delay = delay
+        self.nu_ext = nu_ext
+        self.nu_in = nu_in
+        self.w_plus = w_plus
+        self.w_i = w_i
 
     def create(self):
 
-        # Create the network
-
-        # First create the neurons - the excitatory and inhibitory populations
-        ## Your code here
-        self.neurons_ex = nest.Create('iaf_psc_delta', self.num_ex, params=self.neuron_params_ex)
-        self.neurons_in = nest.Create('iaf_psc_delta', self.num_in, params=self.neuron_params_in)
-        self.neurons = self.neurons_ex + self.neurons_in
-        #self.neurons_ex = self.neurons[:self.num_ex]
-        #self.neurons_in = self.neurons[self.num_ex:]
-
-        # Then create the external poisson spike generator
-        ## Your code here
+        ## Create the network
         
-        self.p_noise = nest.Create("poisson_generator")
-        self.p_noise.rate = self.ext_rate
-        #print("Tself.ext_rate" + str(self.ext_rate))
+        ## First create the neuron populations
+        ## Should we also create a non-specific exc. population?
+        self.neurons_ex_s = nest.Create('glif_cond', self.num_ex, params=self.neuron_params_ex)
+        self.neurons_in = nest.Create('glif_cond', self.num_in, params=self.neuron_params_in)
+        self.neurons_ex_ns = nest.Create('glif_cond', self.num_ex, params=self.neuron_params_ex)
+        self.neurons_ex = self.neurons_ex_s + self.neurons_ex_ns
+        self.neurons = self.neurons_ex + self.neurons_in
 
-        # Then create spike detectors
-        # (disclaimer: dependening on NEST version, the device might be 'spike_detector' or 'spike_recorder'
-        ## Your code here
-        self.spike_recorder_ex = nest.Create("spike_recorder", 1)
-        self.spike_recorder_in = nest.Create("spike_recorder", 1)
-        # Next we connect the excitatory and inhibitory neurons to each other, choose a delay of 1.5 ms
-        nest.Connect(self.neurons_ex, self.neurons,
-             conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-             syn_spec={'weight': self.J_ex, 'delay': 1.5})
-        # Now also connect the inhibitory neurons to the other neurons
-        ## Your code here
-        nest.Connect(self.neurons_in, self.neurons,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_in},
-                     syn_spec={'weight': self.J_in, 'delay': 1.5})
 
-        # Then we connect the external drive to the neurons with weight J_ex
-        ## Your code here
-        nest.Connect(self.p_noise, self.neurons,
-                     syn_spec={'weight': self.J_ex})
+        ## Then create the external poisson spike generator (noise)
+        self.p_nu_ext = nest.Create("poisson_generator")
+        self.p_nu_ext.rate = self.nu_ext
+        
+        ## External input poisson spike train:
+        self.p_nu_in = nest.Create("poisson_generator")
+        self.p_nu_in.rate = self.nu_in
 
-        # Then we connect the the neurons to the spike detectors
-        # Note: You can use slicing for nest node collections as well
-        ## Your code here
-        nest.Connect(self.neurons_ex[:self.n_rec_ex], self.spike_recorder_ex)
+        ## Then create spike detectors
+        self.spike_recorder_ex = nest.Create("spike_recorder")
+        self.spike_recorder_in = nest.Create("spike_recorder")
+        
+        ###########################################################
+        ## Connection management
+        
+        ## Internal connections
+        ## Selective pool
+        nest.Connect(self.neurons_ex_s, self.neurons_ex_s,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': self.w_plus, 
+                               'delay': 1., 
+                               'receptor_type': 1,
+                               'alpha': 0.5})
+        ## Non-selective pool
+        nest.Connect(self.neurons_ex_ns, self.neurons_ex_ns,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': 1., 
+                               'delay': 1., 
+                               'receptor_type': 1,
+                               'alpha': 0.5})
+        ## Inhibitory population
+        nest.Connect(self.neurons_in, self.neurons_in,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': 1, 
+                               'delay': 1., 
+                               'receptor_type': 1,
+                               'alpha': 0.5})
+        
+        ## Connections between groups
+        ## Selective - non-selective
+        nest.Connect(self.neurons_ex_s, self.neurons_ex_ns,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': self.w_plus, 
+                               'delay': 1., 
+                               'receptor_type': 1,
+                               'alpha': 0.5})
+        nest.Connect(self.neurons_ex_ns, self.neurons_ex_s,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': self.w_plus, 
+                               'delay': 1., 
+                               'receptor_type': 1,
+                               'alpha': 0.5})
+        
+        ## Inhibitory - Excitatory
+        nest.Connect(self.neurons_ex, self.neurons_in,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': self.w_i, 
+                               'delay': 1., 
+                               'receptor_type': 1,
+                               'alpha': 0.5})
+        
+        nest.Connect(self.neurons_in, self.neurons_ex,
+                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+                     syn_spec={'synapse_model': 'stdp_synapse',
+                               'weight': -1.,
+                               'Wmax':-5.,
+                               'delay': 1., 
+                               'receptor_type': 2,
+                               'alpha': 0.5})
+
+        ## Then we connect the external drive to the neurons with weight J_ex
+        nest.Connect(self.p_nu_ext, self.neurons,
+                     syn_spec={'weight': 1, 
+                               'receptor_type': 1})
+        
+        ## Connect external input to selective pool
+        nest.Connect(self.p_nu_in, self.neurons_ex,
+                     syn_spec={'weight': 1, 
+                               'receptor_type': 1})
+
+        ## Then we connect the the neurons to the spike detectors
+        nest.Connect(self.neurons_ex_s[:self.n_rec_ex], self.spike_recorder_ex)
         nest.Connect(self.neurons_in[:self.n_rec_in], self.spike_recorder_in)
 
     def simulate(self, t_sim):
         # Simulate the network with specified
         nest.Simulate(t_sim)
+
+    def connect(self):
+        pass
 
     def get_data(self):
         # Define lists to store spike trains in
