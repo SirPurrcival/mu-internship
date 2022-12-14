@@ -4,14 +4,16 @@ import matplotlib.gridspec as gridspec
 import numpy as np
 import nest
 import itertools
+import random
 
 ## 
 
 # Create classes
 class Network():
-    def __init__(self):
+    def __init__(self, ext_rate):
         self.__populations = []
         self.__devices = []
+        self.ext_rate = ext_rate
         self.spike_recorder = nest.Create("spike_recorder")
 
     def addpop(self, neuron_type, num_neurons, neuron_params, record_from_pop=False, nrec=0.):
@@ -54,7 +56,7 @@ class Network():
 
     def create(self):
         self.stimulus = nest.Create("poisson_generator")
-        self.stimulus.rate = 50000
+        self.stimulus.rate = self.ext_rate
         nest.Connect(self.stimulus, self.__populations[0],
                      #conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
                      syn_spec={'receptor_type': 1,
@@ -107,14 +109,19 @@ class Network():
         return self.data
 
 # Helper functions
-def raster(spikes_ex, spikes_in, rec_start, rec_stop, figsize=(9, 5)):
+def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
 
-    spikes_ex_total = list(itertools.chain(*spikes_ex))
-    spikes_in_total = list(itertools.chain(*spikes_in))
-    spikes_total = spikes_ex_total + spikes_in_total
-
-    n_rec_ex = len(spikes_ex)
-    n_rec_in = len(spikes_in)
+    #spikes_total = list(itertools.chain(*spikes))
+    spikes_total = [element for sublist in spikes for element in sublist]
+    nrec_lst = []
+    
+    for i in spikes:
+        nrec_lst.append(len(i))
+        
+    
+    
+    #n_rec_ex = len(spikes_ex)
+    #n_rec_in = len(spikes_in)
 
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(5, 1)
@@ -129,23 +136,25 @@ def raster(spikes_ex, spikes_in, rec_start, rec_stop, figsize=(9, 5)):
 
     ax2.set_ylabel('Rate [Hz]')
     ax2.set_xlabel('Time [ms]')
+    
+    color_list = []
+    for i in range(len(nrec_lst)):
+      r = random.randint(0,255)/255
+      g = random.randint(0,255)/255
+      b = random.randint(0,255)/255
+      color_list.append([r,g,b])
+    
+    for j in range(len(nrec_lst)):
+        for i in range(nrec_lst[j]):
+            ax1.plot(spikes_total[i],
+                (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i])),
+                linestyle='',
+                marker='o',
+                color=color_list[j],
+                markersize=1)
 
-    for i in range(n_rec_in):
-        ax1.plot(spikes_in[i],
-                 i*np.ones(len(spikes_in[i])),
-                 linestyle='',
-                 marker='o',
-                 color='r',
-                 markersize=1)
-    for i in range(n_rec_ex):
-        ax1.plot(spikes_ex[i],
-                 (i + n_rec_in)*np.ones(len(spikes_ex[i])),
-                 linestyle='',
-                 marker='o',
-                 color='b',
-                 markersize=1)
-
-    ax2 = ax2.hist(spikes_ex_total,
+    spikes_total = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
+    ax2 = ax2.hist(spikes_total,
                    range=(rec_start,rec_stop),
                    bins=int(rec_stop - rec_start))
 
@@ -153,16 +162,15 @@ def raster(spikes_ex, spikes_in, rec_start, rec_stop, figsize=(9, 5)):
 
     plt.savefig('raster.png')
 
-def rate(spikes_ex, spikes_in, rec_start, rec_stop):
-    spikes_ex_total = list(itertools.chain(*spikes_ex))
-    spikes_in_total = list(itertools.chain(*spikes_in))
-    spikes_total = spikes_ex_total + spikes_in_total
+def rate(spikes, rec_start, rec_stop):
+    spikes_total = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
 
-    n_rec_ex = len(spikes_ex)
-    n_rec_in = len(spikes_in)
+    
+    nrec_total = 0
+    for i in spikes:
+        nrec_total += len(i)
 
     time_diff = (rec_stop - rec_start)/1000.
     average_firing_rate = (len(spikes_total)
-                           /(n_rec_ex + n_rec_in))
+                           /(nrec_total))
     print(f'Average firing rate: {average_firing_rate} Hz')
-
