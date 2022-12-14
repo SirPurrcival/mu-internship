@@ -13,17 +13,17 @@ class Network():
                  neuron_params_ex, neuron_params_in, n_rec_ex, n_rec_in, 
                  rec_start, rec_stop, nu_ext, nu_in, delay, w_plus, w_i):
         self.num_neurons = num_neurons
-        self.num_ex = int((1 - rho) * num_neurons)  # number of excitatory neurons
-        self.num_in = int(rho * num_neurons)        # number of inhibitory neurons
-        self.c_ex = int(eps * self.num_ex)          # number of excitatory connections
-        self.c_in = int(eps * self.num_in)          # number of inhibitory connections
-        self.J_ex = J_ex                               # excitatory weight
-        self.J_in = J_in #-g*J                            # inhibitory weight
-        self.n_rec_ex = n_rec_ex                    # number of recorded excitatory neurons
-        self.n_rec_in = n_rec_in                    # number of recorded inhibitory neurons
+        self.num_ex = int((1 - rho) * num_neurons)    # number of excitatory neurons
+        self.num_in = int(rho * num_neurons)          # number of inhibitory neurons
+        self.c_ex = int(eps * self.num_ex)            # number of excitatory connections
+        self.c_in = int(eps * self.num_in)            # number of inhibitory connections
+        self.J_ex = J_ex                              # excitatory weight
+        self.J_in = J_in #-g*J                        # inhibitory weight
+        self.n_rec_ex = n_rec_ex                      # number of recorded excitatory neurons
+        self.n_rec_in = n_rec_in                      # number of recorded inhibitory neurons
         self.rec_start = rec_start
         self.rec_stop = rec_stop
-        self.neuron_params_ex = neuron_params_ex          # neuron params
+        self.neuron_params_ex = neuron_params_ex      # neuron params
         self.neuron_params_in = neuron_params_in
         self.delay = delay
         self.nu_ext = nu_ext
@@ -76,14 +76,14 @@ class Network():
                                'delay': 1., 
                                'receptor_type': 1,
                                'alpha': 0.5})
-        ## Inhibitory population
-        nest.Connect(self.neurons_in, self.neurons_in,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': 1, 
-                               'delay': 1., 
-                               'receptor_type': 1,
-                               'alpha': 0.5})
+        # ## Inhibitory population
+        # nest.Connect(self.neurons_in, self.neurons_in,
+        #              conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
+        #              syn_spec={'synapse_model': 'stdp_synapse',
+        #                        'weight': 1, 
+        #                        'delay': 1., 
+        #                        'receptor_type': 1,
+        #                        'alpha': 0.5})
         
         ## Connections between groups
         ## Selective - non-selective
