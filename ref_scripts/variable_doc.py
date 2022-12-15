@@ -44,7 +44,7 @@ n_lif = nest.Create("glif_psc",
 nest.ResetKernel()
 nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
 
-nest.print_time = True
+nest.print_time = False
 
 
 neuronone = nest.Create("glif_cond", params=glif_cond_params)
@@ -53,6 +53,7 @@ voltmeter = nest.Create("voltmeter")
 
 
 nest.Connect(neuronone, neurontwo,
+             conn_spec = {'rule': 'fixed_indegree', 'indegree': 0},
              syn_spec={'receptor_type': 2})
 
 nest.GetStatus(neurontwo)

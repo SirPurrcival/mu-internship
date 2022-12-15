@@ -38,29 +38,29 @@ class Network():
                for y in range(len(populations)):
                    nest.Connect(populations[x], 
                                 populations[y],
-                                conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[y,x] * (len(populations[y]) + len(populations[x])))})
+                                conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * (len(populations[y]) + len(populations[x])))})
         elif isinstance(syn_specs, dict):
             for x in range(len(populations)):
                 for y in range(len(populations)):
                     nest.Connect(populations[x], 
                                  populations[y],
-                                 conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[y,x] * (len(populations[y]) + len(populations[x])))},
+                                 conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * (len(populations[y]) + len(populations[x])))},
                                  syn_spec = syn_specs)
         else:
             for x in range(len(populations)):
                 for y in range(len(populations)):
                     nest.Connect(populations[x], 
                                  populations[y],
-                                 conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[y,x] * (len(populations[y]) + len(populations[x])))},
-                                 syn_spec = syn_specs[y,x])
+                                 conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * (len(populations[y]) + len(populations[x])))},
+                                 syn_spec = syn_specs[x,y])
 
     def create(self):
         self.stimulus = nest.Create("poisson_generator")
         self.stimulus.rate = self.ext_rate
-        nest.Connect(self.stimulus, self.__populations[0],
-                     #conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'receptor_type': 1,
-                               'weight': 1.})
+        for pop in self.__populations:
+            nest.Connect(self.stimulus, pop,
+                syn_spec={'receptor_type': 1,
+                          'weight': 0.1})
     
     def get_pops(self):
         return self.__populations
@@ -169,8 +169,10 @@ def rate(spikes, rec_start, rec_stop):
     nrec_total = 0
     for i in spikes:
         nrec_total += len(i)
+    print(nrec_total)
 
     time_diff = (rec_stop - rec_start)/1000.
     average_firing_rate = (len(spikes_total)
+                           #/time_diff
                            /(nrec_total))
     print(f'Average firing rate: {average_firing_rate} Hz')
