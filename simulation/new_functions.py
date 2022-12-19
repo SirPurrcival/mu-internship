@@ -7,7 +7,6 @@ import itertools
 import random
 
 ## 
-
 # Create classes
 class Network():
     def __init__(self, ext_rate):
@@ -28,31 +27,17 @@ class Network():
     def connect(self, popone, poptwo, conn_specs, syn_specs):
         nest.Connect(popone, poptwo, conn_spec=conn_specs, syn_spec=syn_specs)
     
-    def connect_all(self, populations, conn_specs, syn_specs='default'):
+    def connect_all(self, populations, conn_specs, syn_specs):
         ## Connect a vector containing populations with other populations
         ## with given parameters.
         ## Accepts either one synapse model for all connections or a matrix
         ## of synapse models for each individual connection
-        if isinstance(syn_specs, str):
-           for x in range(len(populations)):
-               for y in range(len(populations)):
-                   nest.Connect(populations[x], 
-                                populations[y],
-                                conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * (len(populations[y]) + len(populations[x])))})
-        elif isinstance(syn_specs, dict):
-            for x in range(len(populations)):
-                for y in range(len(populations)):
-                    nest.Connect(populations[x], 
-                                 populations[y],
-                                 conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * (len(populations[y]) + len(populations[x])))},
-                                 syn_spec = syn_specs)
-        else:
-            for x in range(len(populations)):
-                for y in range(len(populations)):
-                    nest.Connect(populations[x], 
-                                 populations[y],
-                                 conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * (len(populations[y]) + len(populations[x])))},
-                                 syn_spec = syn_specs[x,y])
+        for x in range(len(populations)):
+            for y in range(len(populations)):
+                nest.Connect(populations[x], 
+                             populations[y],
+                             conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * len(populations[x]))},
+                             syn_spec = syn_specs[x,y])
 
     def create(self):
         self.stimulus = nest.Create("poisson_generator")
@@ -164,7 +149,7 @@ def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
 
 def rate(spikes, rec_start, rec_stop):
     spikes_total = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
-
+    print(len(spikes_total))
     
     nrec_total = 0
     for i in spikes:
