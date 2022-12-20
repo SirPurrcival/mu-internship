@@ -36,8 +36,8 @@ class Network():
             for y in range(len(populations)):
                 nest.Connect(populations[x], 
                              populations[y],
-                             conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[x,y] * len(populations[x]))},
-                             syn_spec = syn_specs[x,y])
+                             conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[y,x] * len(populations[x]))},
+                             syn_spec = syn_specs[y,x])
 
     def create(self):
         self.stimulus = nest.Create("poisson_generator")
@@ -97,9 +97,12 @@ class Network():
 def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
 
     #spikes_total = list(itertools.chain(*spikes))
+    
+    # An array containing all the arrays for each neuron
     spikes_total = [element for sublist in spikes for element in sublist]
     nrec_lst = []
     
+    ## Get the size of each population
     for i in spikes:
         nrec_lst.append(len(i))
         
@@ -129,8 +132,10 @@ def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
       b = random.randint(0,255)/255
       color_list.append([r,g,b])
     
-    for j in range(len(nrec_lst)):
-        for i in range(nrec_lst[j]):
+    
+    
+    for j in range(len(nrec_lst)): ## for each population
+        for i in range(nrec_lst[j]): ## Get the size of the population
             ax1.plot(spikes_total[i],
                 (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i])),
                 linestyle='',

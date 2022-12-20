@@ -31,11 +31,11 @@ nest.print_time = False
 #                   }
 
 params = {
-    'num_neurons': 1000,                # number of neurons in network
+    'num_neurons': 800,                # number of neurons in network
     'rho':  0.2,                        # fraction of inhibitory neurons
     'eps':  0.2,                        # probability to establish a connections
     'g':    5,                          # excitation-inhibition balance
-    'eta':  5,                          # relative external rate
+    'eta':  4.4,                          # relative external rate
     'J':    0.1,                        # postsynaptic amplitude in mV
     'n_rec_ex':  6000,                   # excitatory neurons to be recorded from
     'n_rec_in':  2000,                   # inhibitory neurons to be recorded from
@@ -56,14 +56,13 @@ neuron_params_ex = {
     "tau_syn": [2, 20]
 }
 
-
 syn_spec_ex_ex={
     'weight': params['J'],
     'delay': 1.5, 
     'receptor_type': 1
     }
 syn_spec_in_ex={
-    'weight': params['J']*-2*params['g'],
+    'weight': params['J']*-params['g'],
     'delay': 1.5, 
     'receptor_type': 2
      }
@@ -73,7 +72,7 @@ syn_spec_ex_in={#'synapse_model': 'stdp_synapse',
     'receptor_type': 1
     }
 syn_spec_in_in={#'synapse_model': 'stdp_synapse',
-    'weight': params['J']*-2*params['g'],
+    'weight': params['J']*-params['g'],
     'delay': 1.5, 
     'receptor_type': 2
     }
@@ -91,9 +90,6 @@ nu_ex = params['eta'] * nu_th
 
 ratio = nu_ex/nu_th
 
-
-n = nest.Create('glif_psc')
-nest.GetStatus(n)
 network = Network(ext_rate)
 network.addpop('glif_psc', int(params['num_neurons']*(1-params['rho'])),neuron_params_ex, record_from_pop=True, nrec=400)
 network.addpop('glif_psc', int(params['num_neurons']*params['rho']),neuron_params_ex, record_from_pop=True, nrec=100)
@@ -103,8 +99,8 @@ network.addpop('glif_psc', int(params['num_neurons']*params['rho']),neuron_param
 
 
 
-conn_matrix = np.array([[params['eps']*(1-params['rho']), params['eps']*(1-params['rho'])],
-                        [params['eps'], params['eps']*params['rho']]])
+conn_matrix = np.array([[params['eps']*(1-params['rho']), params['eps']],
+                        [params['eps']*(1-params['rho']), 0.0]])
 syn_matrix = np.array([[syn_spec_ex_ex, syn_spec_in_ex],
                       [syn_spec_ex_in, syn_spec_in_in]])
 
@@ -114,6 +110,5 @@ network.connect_all(network.get_pops(), conn_matrix, syn_matrix)
 network.create()
 network.simulate(1000)
 test = network.get_data()
-raster(test, 600, 800)
+raster(test, 500, 700)
 rate(test,600,800)
-#plot_weight_matrices(network.get_pops()[0], network.get_pops()[1])
