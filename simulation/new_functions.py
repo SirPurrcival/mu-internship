@@ -8,11 +8,10 @@ import random
 
 ## 
 # Create classes
-class Network():
-    def __init__(self, ext_rate):
+class Network:
+    def __init__(self):
         self.__populations = []
         self.__devices = []
-        self.ext_rate = ext_rate
         self.spike_recorder = nest.Create("spike_recorder")
 
     def addpop(self, neuron_type, num_neurons, neuron_params, record_from_pop=False, nrec=0.):
@@ -27,25 +26,27 @@ class Network():
     def connect(self, popone, poptwo, conn_specs, syn_specs):
         nest.Connect(popone, poptwo, conn_spec=conn_specs, syn_spec=syn_specs)
     
-    def connect_all(self, populations, conn_specs, syn_specs):
+    def connect_all(self, conn_specs, syn_specs):
         ## Connect a vector containing populations with other populations
         ## with given parameters.
         ## Accepts either one synapse model for all connections or a matrix
         ## of synapse models for each individual connection
-        for x in range(len(populations)):
-            for y in range(len(populations)):
-                nest.Connect(populations[x], 
-                             populations[y],
-                             conn_spec = {'rule': 'fixed_indegree', 'indegree': int(conn_specs[y,x] * len(populations[x]))},
-                             syn_spec = syn_specs[y,x])
+        r = list(range(len(self.__populations)))
+        R = itertools.product(r,r)
+        for x,y in R:
+            nest.Connect(self.__populations[x],
+                         self.__populations[y],
+                         conn_spec = {'rule': 'fixed_indegree', 
+                                      'indegree': int(conn_specs[y, x] * len(self.__populations[x]))},
+                         syn_spec = syn_specs[y, x])
+        
+                
 
-    def create(self):
-        self.stimulus = nest.Create("poisson_generator")
-        self.stimulus.rate = self.ext_rate
-        for pop in self.__populations:
-            nest.Connect(self.stimulus, pop,
-                syn_spec={'receptor_type': 1,
-                          'weight': 0.1})
+    def add_stimulation(self, source, target):
+        stimulus = nest.Create(source['type'])
+        stimulus.rate = source['rate']
+        nest.Connect(stimulus, self.__populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
+                                                                                                'weight': 0.1})
     
     def get_pops(self):
         return self.__populations
@@ -125,26 +126,26 @@ def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
     ax2.set_ylabel('Rate [Hz]')
     ax2.set_xlabel('Time [ms]')
     
-    color_list = []
-    for i in range(len(nrec_lst)):
-      r = random.randint(0,255)/255
-      g = random.randint(0,255)/255
-      b = random.randint(0,255)/255
-      color_list.append([r,g,b])
+    color_list = ['b', 'r']
+    # for i in range(len(nrec_lst)):
+    #   r = random.randint(0,255)/255
+    #   g = random.randint(0,255)/255
+    #   b = random.randint(0,255)/255
+    #   color_list.append([r,g,b])
     
     
-    
+    print(nrec_lst)
     for j in range(len(nrec_lst)): ## for each population
         for i in range(nrec_lst[j]): ## Get the size of the population
-            ax1.plot(spikes_total[i],
-                (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i])),
+            ax1.plot(spikes_total[(i+ sum(nrec_lst[:j]))],
+                (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i+ sum(nrec_lst[:j])])),
                 linestyle='',
                 marker='o',
                 color=color_list[j],
                 markersize=1)
 
-    spikes_total = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
-    ax2 = ax2.hist(spikes_total,
+    spikes_hist = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
+    ax2 = ax2.hist(spikes_hist,
                    range=(rec_start,rec_stop),
                    bins=int(rec_stop - rec_start))
 
