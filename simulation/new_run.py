@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import nest
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from new_functions import Network, raster, rate, approximate_lfp
+from new_functions import Network, raster, rate, approximate_lfp, approximate_shitty_lfp
 
 nest.ResetKernel()
 nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
@@ -31,7 +31,8 @@ params = {
     'n_rec_ex':  800,                   # excitatory neurons to be recorded from
     'n_rec_in':  200,                   # inhibitory neurons to be recorded from
     'rec_start': 600.,                  # start point for recording spike trains
-    'rec_stop':  800.                   # end points for recording spike trains
+    'rec_stop':  800.,                   # end points for recording spike trains
+    'tau_syn': [0.2,2]
     }
 
 neuron_params = {
@@ -40,7 +41,7 @@ neuron_params = {
     "E_L":     0.0,                     ## resting membrane potential
     "V_m":     0.0,                     ## membrane potential
     "V_th":    20.,                     ## spike threshold
-    "V_reset": 10.,                     ## Reset potential of membrane
+    "V_reset": 0.,                     ## Reset potential of membrane
     "spike_dependent_threshold": False,
     "after_spike_currents": False,
     "adapting_threshold": False,
@@ -71,6 +72,15 @@ syn_spec_in_in = {
     'receptor_type': 1
     }
 
+# connect populations
+delay = 1.5
+# excitatory input to receptor_type 1
+nest.CopyModel("static_synapse", "excitatory",
+               {"weight": params['J'], "delay": delay, "receptor_type": 1})
+# inhbitiory input to receptor_type 2 (makes weight automatically postive if negative weight is supplied)
+nest.CopyModel("static_synapse", "inhibitory",
+               {"weight": params['J']*-params['g'], "delay": delay, "receptor_type": 1})
+
 
 
 ## From the old script:
@@ -98,8 +108,8 @@ network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, 
 ## Define connectivity matrix
 conn_matrix = np.array([[params['eps'], params['eps']],
                         [params['eps'], params['eps']]])
-syn_matrix = np.array([[syn_spec_ex_ex, syn_spec_in_ex],
-                       [syn_spec_ex_in, syn_spec_in_in]])
+syn_matrix = np.array([["excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory"]])
 
 
 network.connect_all(conn_matrix, syn_matrix)
@@ -107,8 +117,8 @@ network.connect_all(conn_matrix, syn_matrix)
 simtime=1000
 
 network.simulate(simtime)
-spikes, mmdata = network.get_data()
-raster(spikes, params['rec_start'], params['rec_stop'])
+spikes, mmdata, rasterspikes = network.get_data()
+raster(rasterspikes, params['rec_start'], params['rec_stop'])
 plt.show()
 
 ## TODO: This one still needs a small rewrite. Currently it takes the average of all spikes over the simulation time, which is only Hz if
@@ -117,13 +127,27 @@ rate(spikes, params['rec_start'], params['rec_stop'])
 
 spatial_data = [network.get_pops()[0].spatial, network.get_pops()[1].spatial] 
 
-meow, cex, cin = approximate_lfp(resolution, mmdata, simtime, spatial_data)
+#meow = approximate_shitty_lfp(resolution, mmdata, simtime, spatial_data)
 
-plt.plot(meow)
-#plt.xlim([0,200])
+senders = mmdata[0]["senders"]
+potential = mmdata[0]["V_m"]
+print(mmdata)
+
+plt.scatter(mmdata[0]["times"], mmdata[0]["V_m"])
 plt.show()
-nya = network.get_pops()[0]
-nya.spatial
 
-for pop in network.get_pops():
-    nest.PlotLayer(pop)
+# plt.plot(meow)
+# plt.xlim([160,180])
+# plt.show()
+# nya = network.get_pops()[0]
+# nya.spatial
+
+# for pop in network.get_pops():
+#     nest.PlotLayer(pop)
+
+spikes[0]["events"]
+senders = spikes[0]["events"]["senders"]
+spike_times = spikes[0]["events"]["times"]
+plt.scatter(spike_times, senders, marker='o', s=1)
+plt.xlim(600,800)
+plt.show()

@@ -24,7 +24,7 @@ class Network:
             nest.Connect(newpop[:nrec], self.spike_recorder)
             mm = nest.Create("multimeter",
                              params={"interval": self.resolution,
-                             "record_from": ["I", "I_syn"]})
+                             "record_from": ["V_m", "I_syn"]})
             nest.Connect(mm, newpop)
             self.__devices.append(mm)
         ## Add it to internal list of populations
@@ -110,7 +110,7 @@ class Network:
                 mmlist.append(nest.GetStatus(d)[0]["events"])
             
             
-        return self.data, mmlist
+        return self.spike_times, mmlist, self.data#, mmlist
 
 # Helper functions
 def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
@@ -207,7 +207,7 @@ def approximate_lfp(resolution, data, simtime, spatial_data):
 
     for timestep in np.round(np.arange(delay, simtime, resolution),1):
         ## sum excitatory currents with delay of 6ms
-        current_ex[i] = sum(data[0]["I_syn"][tuple([data[0]["times"] == timestep])])
+        current_ex[i] = sum(data[0]["I_syn"][tuple([data[0]["times"] == timestep-delay])])
         current_in[i] = sum(data[1]["I_syn"][tuple([data[1]["times"] == timestep])])
         i +=1
         
@@ -234,3 +234,28 @@ def approximate_lfp(resolution, data, simtime, spatial_data):
     lfp = fake_amplitude * WS_norm
         
     return lfp, current_ex, current_in
+
+def approximate_shitty_lfp(resolution, data, simtime, spatial_data):
+    
+    i = 0
+    
+    V_ex_avg = np.zeros((int(simtime/resolution),))
+    V_in_avg = np.zeros((int(simtime/resolution),))
+    for timestep in np.round(np.arange(stop=simtime, step=resolution),1):
+        ## sum excitatory currents with delay of 6ms
+        V_ex_avg[i] = np.sum(data[0]["V_m"][tuple([data[0]["times"] == timestep])])
+        V_in_avg[i] = np.sum(data[1]["V_m"][tuple([data[1]["times"] == timestep])])
+        
+        i +=1
+        print(timestep)
+        
+    V_ws = V_ex_avg - V_in_avg
+    
+    ## normalize
+    mean = np.mean(V_ws)
+    WS = np.subtract(V_ws, mean)
+    norm = np.linalg.norm(V_ws)
+    
+    V_norm = WS/norm
+    
+    return V_norm
