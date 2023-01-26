@@ -9,17 +9,24 @@ import random
 ## 
 # Create classes
 class Network:
-    def __init__(self):
+    def __init__(self, resolution):
         self.__populations = []
         self.__devices = []
+        self.resolution = resolution
         self.spike_recorder = nest.Create("spike_recorder")
 
-    def addpop(self, neuron_type, num_neurons, neuron_params, record_from_pop=False, nrec=0.):
+    def addpop(self, neuron_type, num_neurons, neuron_params, neuron_positions, 
+               record_from_pop=False, nrec=0.):
         ## Create the neuronal population
-        newpop = nest.Create(neuron_type, num_neurons, neuron_params)
-        ## If record_from_pop is true, also connect the spike recorder to it
+        newpop = nest.Create(neuron_type, num_neurons, neuron_params, positions=neuron_positions)
+        ## If record_from_pop is true, also connect the spike recorder and multimeter to it
         if record_from_pop:
             nest.Connect(newpop[:nrec], self.spike_recorder)
+            mm = nest.Create("multimeter",
+                             params={"interval": self.resolution,
+                             "record_from": ["I", "I_syn"]})
+            nest.Connect(mm, newpop)
+            self.__devices.append(mm)
         ## Add it to internal list of populations
         self.__populations.append(newpop)
     
@@ -59,6 +66,10 @@ class Network:
         nest.Simulate(t_sim)
 
     def get_data(self):
+        
+        ######################################
+        ## Get spike recorder data
+        
         ## Get the data f rom the spike recorder
         self.spike_times = nest.GetStatus(self.spike_recorder)
         
@@ -92,7 +103,14 @@ class Network:
             ## Store to data
             self.data.append(self.spike_times_sorted)
             
-        return self.data
+            ################################################
+            ## Get multimeter data
+            mmlist = []
+            for d in self.__devices:
+                mmlist.append(nest.GetStatus(d)[0]["events"])
+            
+            
+        return self.data, mmlist
 
 # Helper functions
 def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
@@ -167,3 +185,52 @@ def rate(spikes, rec_start, rec_stop):
                            #/time_diff
                            /(nrec_total))
     print(f'Average firing rate: {average_firing_rate} Hz')
+    
+def approximate_lfp(resolution, data, simtime, spatial_data):
+    ## Use the RWS from Mazzoni et al. (2015)
+    ## https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4682791/
+    
+    ## Get depth for all point neurons
+    # spatial_data = spatial_data[0]["positions"]
+    # depth = np.array([i[0] for i in spatial_data])
+    # nm = np.linalg.norm(depth)
+    # norm_depth = depth/nm 
+    ## delay is fixed at 6ms - how many steps is that in nest resolution?
+    tau_ampa = 6
+    delay = tau_ampa/resolution
+    
+    ## compute LFP timecourse
+    current_ex = np.zeros((int(simtime/resolution),))
+    current_in = np.zeros((int(simtime/resolution),))
+    ## Start at the delay since we don't have any data at time -6ms
+    i = 0
+
+    for timestep in np.round(np.arange(delay, simtime, resolution),1):
+        ## sum excitatory currents with delay of 6ms
+        current_ex[i] = sum(data[0]["I_syn"][tuple([data[0]["times"] == timestep])])
+        current_in[i] = sum(data[1]["I_syn"][tuple([data[1]["times"] == timestep])])
+        i +=1
+        
+    
+    ## Apply alpha
+    current_ex = np.array(current_ex)
+    current_in = np.array([i * 1.65 for i in current_in])
+    
+    ## subtract
+    WS = np.subtract(current_ex, current_in)
+    
+    ## normalize
+    mean = np.mean(WS)
+    WS = np.subtract(WS, mean)
+    norm = np.linalg.norm(WS)
+    
+    WS_norm = WS/norm
+    
+    
+    ## compute LFP amplitude
+    fake_amplitude = 0.06
+    
+    ## compute LFP
+    lfp = fake_amplitude * WS_norm
+        
+    return lfp, current_ex, current_in

@@ -11,30 +11,21 @@ import matplotlib.pyplot as plt
 import nest
 import matplotlib.gridspec as gridspec
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from new_functions import Network, raster, rate
+from new_functions import Network, raster, rate, approximate_lfp
 
 nest.ResetKernel()
 nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
 
 nest.print_time = False
 #nest.overwrite_files = True
-
-
-
-# neuron_params_ex = {"C_m":   0.5,            ## capacity of membrane
-#                   "tau_m":   20.,            ## membrane time constant
-#                   "t_ref":   2.0,            ## duration of refractory period
-#                   "E_L":     0.0,            ## resting membrane potential
-#                   "V_m":     0.0,            ## membrane potential
-#                   "V_th":    20.,            ## spike threshold
-#                   "V_reset": 0.0             ## Reset potential of membrane
-#                   }
+resolution = 0.1
+nest.resolution = resolution
 
 params = {
     'N':    [800, 200],                 # number of neurons in network
     'rho':  0.2,                        # fraction of inhibitory neurons
     'eps':  0.1,                        # probability to establish a connections
-    'g':    5,                          # excitation-inhibition balance
+    'g':    4,                          # excitation-inhibition balance
     'eta':  2,                          # relative external rate
     'J':    0.1,                        # postsynaptic amplitude in mV
     'n_rec_ex':  800,                   # excitatory neurons to be recorded from
@@ -89,21 +80,22 @@ syn_spec_in_in = {
 ext_rate = 33.5e4
 
 
-# nu_th = neuron_params['V_th'] / (params['J'] * params['N'][0] * params['eps'] * neuron_params['tau_syn'][0])
-# nu_ex = params['eta'] * nu_th
-# ratio = nu_ex/nu_th
+network = Network(resolution)
 
-network = Network()
-network.addpop('glif_psc', params['N'][0], neuron_params, record_from_pop=True, nrec=800)
-network.addpop('glif_psc', params['N'][1], neuron_params, record_from_pop=True, nrec=200)
+## Positions
+pos_ex = nest.spatial.free(nest.random.normal(mean=0.5, std=1.),
+                        num_dimensions=3)
+pos_in = nest.spatial.free(nest.random.normal(mean=0., std=1.),
+                        num_dimensions=3)
+
+network.addpop('glif_psc', params['N'][0], neuron_params, pos_ex, record_from_pop=True, nrec=800)
+network.addpop('glif_psc', params['N'][1], neuron_params, pos_in, record_from_pop=True, nrec=200)
 
 # add stimulation
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=1) # to inhibitory population
 
-## In the previous script we connected the excitatory/inhibitory population to all neurons. Since the setup here is different
-## I changed the connection probabilities to reflect this. Previously there were eps*allneurons connections. Now this has to be divided
-## into eps*fraction_exc and eps*fraction_inh so the total doesn't change
+## Define connectivity matrix
 conn_matrix = np.array([[params['eps'], params['eps']],
                         [params['eps'], params['eps']]])
 syn_matrix = np.array([[syn_spec_ex_ex, syn_spec_in_ex],
@@ -112,25 +104,26 @@ syn_matrix = np.array([[syn_spec_ex_ex, syn_spec_in_ex],
 
 network.connect_all(conn_matrix, syn_matrix)
 
-network.simulate(1000)
-test = network.get_data()
-raster(test, params['rec_start'], params['rec_stop'])
+simtime=1000
+
+network.simulate(simtime)
+spikes, mmdata = network.get_data()
+raster(spikes, params['rec_start'], params['rec_stop'])
 plt.show()
 
-##This one still needs a small rewrite. Currently it takes the average of all spikes over the simulation time, which is only Hz if
+## TODO: This one still needs a small rewrite. Currently it takes the average of all spikes over the simulation time, which is only Hz if
 ##the simulation time is 1000ms. 
-rate(test, params['rec_start'], params['rec_stop'])
+rate(spikes, params['rec_start'], params['rec_stop'])
 
+spatial_data = [network.get_pops()[0].spatial, network.get_pops()[1].spatial] 
 
-# analyze connectivity
-# connections = nest.GetConnections()
-# src_trg = connections.get(['source', 'target', 'weight'])
-#
-# num_sources = np.max(src_trg['source'])
-# num_targets = np.max(src_trg['target'])
-#
-# W = np.zeros((num_targets, num_sources))
-# NZ = np.zeros((num_targets, num_sources))
-# for i in range(len(src_trg['source'])):
-#     W[src_trg['target'][i]-1, src_trg['source'][i]-1] += src_trg['weight'][i]
-#     NZ[src_trg['target'][i]-1, src_trg['source'][i]-1] = 1
+meow, cex, cin = approximate_lfp(resolution, mmdata, simtime, spatial_data)
+
+plt.plot(meow)
+#plt.xlim([0,200])
+plt.show()
+nya = network.get_pops()[0]
+nya.spatial
+
+for pop in network.get_pops():
+    nest.PlotLayer(pop)
