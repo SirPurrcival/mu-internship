@@ -1,13 +1,14 @@
 import numpy as np
 import pylab as plt
 
-import nest
+from new_functions import approximate_shitty_lfp
 
-from new_functions import approximate_lfp
+import nest
 
 nest.ResetKernel()
 resolution = 0.1
 nest.resolution = resolution
+nest.local_num_threads = 5
 
 M = 2               # number of populations
 NE = 800            # number of excitatory neurons
@@ -22,13 +23,67 @@ J_in = J * g        # inhibitory weight of single synapse
 
 # setup neurons
 E_lif = nest.Create("glif_psc", NE,
-                    params={"spike_dependent_threshold": False,
-                            "after_spike_currents":      True,
-                            "adapting_threshold":        False})
+                    params={
+    "V_m": -79.0417277018229,
+    "V_th": -49.63934810542196,
+    "g": 3.4780284104908676,
+    "E_L": -79.0417277018229,
+    "C_m": 60.72689987399939,
+    "t_ref": 1.4500000000000002,
+    "V_reset": -79.0417277018229,
+    "asc_init": [
+        0.0,
+        0.0
+    ],
+    "asc_decay": [
+        0.029999999999999992,
+        0.3
+    ],
+    "asc_amps": [
+        -23.825265478178427,
+        -292.06473034028727
+    ],
+    "tau_syn": [
+        5.5,
+        8.5,
+        2.8,
+        5.8
+    ],
+    "spike_dependent_threshold": False,
+    "after_spike_currents": True,
+    "adapting_threshold": False
+})
 I_lif = nest.Create("glif_psc", NI,
-                    params={"spike_dependent_threshold": False,
-                            "after_spike_currents":      True,
-                            "adapting_threshold":        False})
+                    params={
+    "V_m": -79.0417277018229,
+    "V_th": -49.63934810542196,
+    "g": 3.4780284104908676,
+    "E_L": -79.0417277018229,
+    "C_m": 60.72689987399939,
+    "t_ref": 1.4500000000000002,
+    "V_reset": -79.0417277018229,
+    "asc_init": [
+        0.0,
+        0.0
+    ],
+    "asc_decay": [
+        0.029999999999999992,
+        0.3
+    ],
+    "asc_amps": [
+        -23.825265478178427,
+        -292.06473034028727
+    ],
+    "tau_syn": [
+        5.5,
+        8.5,
+        2.8,
+        5.8
+    ],
+    "spike_dependent_threshold": False,
+    "after_spike_currents": True,
+    "adapting_threshold": False
+})
 populations = [E_lif, I_lif]
 
 # connect populations
@@ -57,7 +112,7 @@ nest.Connect(pg, populations[1], syn_spec={"delay": 1.5, "receptor_type": 1})
 # setup recording devices
 mm = nest.Create("multimeter", M,
                  params={"interval": resolution,
-                         "record_from": ["ASCurrents_sum"]})
+                         "record_from": ["V_m", "I_syn"]})
 nest.Connect(mm[0], E_lif)
 nest.Connect(mm[1], I_lif)
 
@@ -83,4 +138,3 @@ for m in range(M):
     plt.scatter(times[m], senders[m], s=1, color=colors[m])
 plt.gca().invert_yaxis()
 plt.show()
-

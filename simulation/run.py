@@ -1,102 +1,142 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Jul  8 12:22:23 2022
-
-@author: meowlin
-"""
-
-# Import libraries
-from matplotlib import pyplot as plt
-import matplotlib.gridspec as gridspec
+## Import libraries
 import numpy as np
+import matplotlib.pyplot as plt
 import nest
-import itertools
+from new_functions import Network, raster, rate, approximate_lfp_timecourse
+#import icsd
 
-from functions import Network, raster, rate
 
-neuron_params_ex = {
-    "V_m":            -70.,     ## Membrane potential in mV
-    "V_th":           -50.,     ## instantaneous threshold in mV
-#    "g":   np.array([2.08, 0.104, 0.327, 1.287]), ## Hopefully conductances of receptors
-    "g_m":              25,     ## Membrance leak conductance in nS
-    "E_L":            -70.,     ## Resting membrane potential in mV
-    "C_m":             0.5,     ## Capacitance of membrane in picoFarad
-    "t_ref":            1.,     ## Duration of refractory period in ms
-    "V_reset":        -55.,     ## Reset potential of the membrane in mV (GLIF1 or GLIF3)
-    "tau_minus":        2.,     ## Synapse decay time(??)
-    "tau_syn":     (2., 10., 100., 2.),
-    "E_rev":       (0.,0.,0.,0.)      ## Reversal potential
-}
-
-neuron_params_in = {
-    "V_m":            -70.,     ## Membrane potential in mV
-    "V_th":           -50.,     ## instantaneous threshold in mV
-#    "g":   np.array([1.62, 0.081, 0.258, 1.002]), ## Hopefully conductances of receptors
-    "g_m":              20,     ## Membrance leak conductance in nS
-    "E_L":            -70.,     ## Resting membrane potential in mV
-    "C_m":             0.2,     ## Capacitance of membrane in picoFarad
-    "t_ref":            1.,     ## Duration of refractory period in ms
-    "V_reset":        -55.,     ## Reset potential of the membrane in mV (GLIF1 or GLIF3)
-    "tau_minus":        2.,     ## Synapse decay time(??)
-    "tau_syn":         (2., 10., 100., 2.), ##AMPA/GABA/NMDA/NMDARISE
-    "E_rev":          (-70.,-70.,-70.,-70.)      ## Reversal potential
-}
-
-params = {
-    'num_neurons': 250,                # number of neurons in network
-    'rho':  0.2,                        # fraction of inhibitory neurons
-    'eps':  0.2,                        # probability to establish a connections
-    'g':    5,                          # excitation-inhibition balance
-    'eta':  2.5,                        # relative external rate
-    'J_ex':    1.5,                        # postsynaptic amplitude in mV
-    'J_in':    1.0,
-    'neuron_params_ex': neuron_params_ex,     # single neuron parameters
-    'neuron_params_in': neuron_params_in,
-    'n_rec_ex':  100,                   # excitatory neurons to be recorded from
-    'n_rec_in':  50,                   # inhibitory neurons to be recorded from
-    'rec_start': 600.,                  # start point for recording spike trains
-    'rec_stop':  800.,                   # end points for recording spike trains
-    'nu_ext': 240.,                    # (neuron_params_ex['V_th']   # the external rate needs to be adapted to provide enough input (Brunel 2000)
-    'nu_in': 250.,                                    # / (0.1 * 0.2*6000 * neuron_params_ex['tau_m']) ##J_ex*eps*num_ex
-                                        # * 2.5 * 1000. * 0.2*6000), ## eta*1000*eps*num_ex
-    'delay': 4.,                           ## connection specific delay
-    'w_plus': 1.5,
-    'w_i': 1.
-    }
-
+## Set nest variables
 nest.ResetKernel()
 nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
+nest.print_time = False
+resolution = 0.1
+nest.resolution = resolution
 
-nest.print_time = True
-#nest.overwrite_files = True
+#######################################
+## Set parameters for the simulation ##
+#######################################
 
-network = Network(**params)
-network.create()
-network.simulate(1000)
-test = network.get_data()
-# nya = test[2]
-# for a in range(1,601):
-#     counter = 0
-#     for i in nya:
-#         if i == a:
-#             counter += 1
-#     print("Neuron " + str(a) + " fired " + str(counter) + " times during this simulation.")
-    
+params = {
+    'N':    [800, 200],                 # number of neurons in network
+    'rho':  0.2,                        # fraction of inhibitory neurons
+    'eps':  0.1,                        # probability to establish a connections
+    'g':    4,                          # excitation-inhibition balance
+    'eta':  2,                          # relative external rate
+    'J':    0.1,                        # postsynaptic amplitude in mV
+    'n_rec_ex':  800,                   # excitatory neurons to be recorded from
+    'n_rec_in':  200,                   # inhibitory neurons to be recorded from
+    'rec_start': 600.,                  # start point for data recording
+    'rec_stop':  800.,                  # end points for data recording
+    'sim_time': 1000.
+    }
 
-# print("Neuron 1 fired " + str(counter) + " times during this simulation.")
-#nu_th = theta / (J * CE * tauMem)
-#nu_ex = eta * nu_th
+neuron_params={
+    "V_m": -79.0417277018229,
+    "V_th": -49.63934810542196,
+    "g": 3.4780284104908676,
+    "E_L": -79.0417277018229,
+    "C_m": 60.72689987399939,
+    "t_ref": 1.4500000000000002,
+    "V_reset": -79.0417277018229,
+    "asc_init": [
+        0.0,
+        0.0
+    ],
+    "asc_decay": [
+        0.029999999999999992,
+        0.3
+    ],
+    "asc_amps": [
+        -23.825265478178427,
+        -292.06473034028727
+    ],
+    "tau_syn": [
+        5.5,
+        8.5,
+        2.8,
+        5.8
+    ],
+    "spike_dependent_threshold": False,
+    "after_spike_currents": True,
+    "adapting_threshold": False
+}
 
-#theta = V_th
+################################
+## Specify synapse properties ##
+################################
 
-#nu_th = neuron_params_ex['V_th'] / (params['J_ex'] * network.c_ex * neuron_params_ex['tau_m'])
-#nu_ex = params['eta'] * nu_th
+delay = 1.5
+# excitatory input to receptor_type 1
+nest.CopyModel("static_synapse", "excitatory",
+               {"weight": params['J'], "delay": delay, "receptor_type": 1})
+# inhbitiory input to receptor_type 2 (makes weight automatically postive if negative weight is supplied)
+nest.CopyModel("static_synapse", "inhibitory",
+               {"weight": params['J']*-params['g'], "delay": delay, "receptor_type": 2})
 
-#ratio = nu_ex/nu_th
+
+ext_rate = 1000*8
+
+########################
+## Create the network ##
+########################
+
+network = Network(resolution, params['rec_start'], params['rec_stop'])
+
+## Distribute the point neurons in space to prepare for LFP approximation
+pos_ex = nest.spatial.free(nest.random.normal(mean=0.5, std=1.),
+                        num_dimensions=3)
+pos_in = nest.spatial.free(nest.random.normal(mean=0., std=1.),
+                        num_dimensions=3)
+
+## Add populations to the network
+network.addpop('glif_psc', params['N'][0], neuron_params, pos_ex, record_from_pop=True, nrec=800)
+network.addpop('glif_psc', params['N'][1], neuron_params, pos_in, record_from_pop=True, nrec=200)
+
+# add stimulation
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=1) # to inhibitory population
+
+## Define connectivity matrix
+conn_matrix = np.array([[0.1, 0.1],
+                        [0.1, 0.1]])
+syn_matrix = np.array([["excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory"]])
+
+## Connect all populations to each other according to the
+## connectivity matrix and synaptic specifications
+network.connect_all(conn_matrix, syn_matrix)
+
+## simulate
+network.simulate(params['sim_time'])
+
+## Extract data from the network
+mmdata, spikes = network.get_data()
+
+## Plot spike data
+raster(spikes, params['rec_start'], params['rec_stop'])
+plt.show()
+
+## Display the average firing rate in Hz
+rate(spikes, params['rec_start'], params['rec_stop'])
+
+## Approximate the lfp timecourse
+lfp_tc, all_tc = approximate_lfp_timecourse(mmdata)
+
+t = np.unique(mmdata[0]["times"])
+
+for l in all_tc:
+    for x in l:
+        plt.plot(t, x)
+
+plt.plot(t, lfp_tc, c='black', lw=5)
+plt.show()    
+
+## plot the timecourse in the recorded time window
+plt.plot(np.unique(mmdata[0]["times"]), lfp_tc)
+plt.show
 
 
 
-#print(f"Current Netork parameters: Nu_ex/Nu_th: {ratio}, Delay: 1.5ms, g: {params['g']}")
-raster(test[0], test[1], params.get('rec_start'), params.get('rec_stop'))
-rate(test[0], test[1], params.get('rec_start'), params.get('rec_stop'))
+#meow = icsd.StandardCSD([lfp_tc, ])
+

@@ -1,202 +1,250 @@
-# Import libraries
+## Import libraries
 from matplotlib import pyplot as plt
-import matplotlib.gridspec as gridspec
 import numpy as np
 import nest
 import itertools
 
 ## 
-
 # Create classes
-class Network():
-    def __init__(self, num_neurons, rho, eps, g, eta, J_ex, J_in, 
-                 neuron_params_ex, neuron_params_in, n_rec_ex, n_rec_in, 
-                 rec_start, rec_stop, nu_ext, nu_in, delay, w_plus, w_i):
-        self.num_neurons = num_neurons
-        self.num_ex = int((1 - rho) * num_neurons)    # number of excitatory neurons
-        self.num_in = int(rho * num_neurons)          # number of inhibitory neurons
-        self.c_ex = int(eps * self.num_ex)            # number of excitatory connections
-        self.c_in = int(eps * self.num_in)            # number of inhibitory connections
-        self.J_ex = J_ex                              # excitatory weight
-        self.J_in = J_in #-g*J                        # inhibitory weight
-        self.n_rec_ex = n_rec_ex                      # number of recorded excitatory neurons
-        self.n_rec_in = n_rec_in                      # number of recorded inhibitory neurons
+class Network:
+    def __init__(self, resolution, rec_start, rec_stop):
+        self.__populations = []
+        self.__devices = []
         self.rec_start = rec_start
         self.rec_stop = rec_stop
-        self.neuron_params_ex = neuron_params_ex      # neuron params
-        self.neuron_params_in = neuron_params_in
-        self.delay = delay
-        self.nu_ext = nu_ext
-        self.nu_in = nu_in
-        self.w_plus = w_plus
-        self.w_i = w_i
+        self.resolution = resolution
+        self.spike_recorder = nest.Create("spike_recorder")
+        self.spike_recorder.start = self.rec_start
+        self.spike_recorder.stop = self.rec_stop
 
-    def create(self):
+    def addpop(self, neuron_type, num_neurons, neuron_params, neuron_positions, 
+               record_from_pop=True, nrec=0.):
+        """
+        Adds a population to the network with given parameters
 
-        ## Create the network
-        
-        ## First create the neuron populations
-        ## Should we also create a non-specific exc. population?
-        self.neurons_ex_s = nest.Create('glif_cond', self.num_ex, params=self.neuron_params_ex)
-        self.neurons_in = nest.Create('glif_cond', self.num_in, params=self.neuron_params_in)
-        self.neurons_ex_ns = nest.Create('glif_cond', self.num_ex, params=self.neuron_params_ex)
-        self.neurons_ex = self.neurons_ex_s + self.neurons_ex_ns
-        self.neurons = self.neurons_ex + self.neurons_in
+        Parameters
+        ----------
+        neuron_type : string
+            The neuron model name
+        num_neurons : int
+            number of neurons in the specified population
+        neuron_params : dictionary
+            parameters for the population
+        neuron_positions : nest spatial data
+            nest spatial data
+        record_from_pop : boolean, optional
+            Whether or not to record from this population. The default is True.
+        nrec : int, optional
+            number of neurons to record from. The default is 0..
 
+        Returns
+        -------
+        None.
 
-        ## Then create the external poisson spike generator (noise)
-        self.p_nu_ext = nest.Create("poisson_generator")
-        self.p_nu_ext.rate = self.nu_ext
+        """
         
-        ## External input poisson spike train:
-        self.p_nu_in = nest.Create("poisson_generator")
-        self.p_nu_in.rate = self.nu_in
+        ## Create the neuronal population
+        newpop = nest.Create(neuron_type, num_neurons, neuron_params, positions=neuron_positions)
+        ## If record_from_pop is true, also connect the spike recorder and multimeter to it
+        if record_from_pop:
+            nest.Connect(newpop[:nrec], self.spike_recorder)
+            mm = nest.Create("multimeter",
+                             params={"interval": self.resolution,
+                             "record_from": ["V_m", "I_syn"]})
+            mm.start = self.rec_start
+            mm.stop = self.rec_stop
+            nest.Connect(mm, newpop)
+            self.__devices.append(mm)
+        ## Add it to internal list of populations
+        self.__populations.append(newpop)
+    
+    def connect(self, popone, poptwo, conn_specs, syn_specs):
+        """
+        Connects one population to another with given specifications.
 
-        ## Then create spike detectors
-        self.spike_recorder_ex = nest.Create("spike_recorder")
-        self.spike_recorder_in = nest.Create("spike_recorder")
-        
-        ###########################################################
-        ## Connection management
-        
-        ## Internal connections
-        ## Selective pool
-        nest.Connect(self.neurons_ex_s, self.neurons_ex_s,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': self.w_plus, 
-                               'delay': 1., 
-                               'receptor_type': 1,
-                               'alpha': 0.5})
-        ## Non-selective pool
-        nest.Connect(self.neurons_ex_ns, self.neurons_ex_ns,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': 1., 
-                               'delay': 1., 
-                               'receptor_type': 1,
-                               'alpha': 0.5})
-        # ## Inhibitory population
-        # nest.Connect(self.neurons_in, self.neurons_in,
-        #              conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-        #              syn_spec={'synapse_model': 'stdp_synapse',
-        #                        'weight': 1, 
-        #                        'delay': 1., 
-        #                        'receptor_type': 1,
-        #                        'alpha': 0.5})
-        
-        ## Connections between groups
-        ## Selective - non-selective
-        nest.Connect(self.neurons_ex_s, self.neurons_ex_ns,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': self.w_plus, 
-                               'delay': 1., 
-                               'receptor_type': 1,
-                               'alpha': 0.5})
-        nest.Connect(self.neurons_ex_ns, self.neurons_ex_s,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': self.w_plus, 
-                               'delay': 1., 
-                               'receptor_type': 1,
-                               'alpha': 0.5})
-        
-        ## Inhibitory - Excitatory
-        nest.Connect(self.neurons_ex, self.neurons_in,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': self.w_i, 
-                               'delay': 1., 
-                               'receptor_type': 1,
-                               'alpha': 0.5})
-        
-        nest.Connect(self.neurons_in, self.neurons_ex,
-                     conn_spec={'rule': 'fixed_indegree', 'indegree': self.c_ex},
-                     syn_spec={'synapse_model': 'stdp_synapse',
-                               'weight': -1.,
-                               'Wmax':-5.,
-                               'delay': 1., 
-                               'receptor_type': 2,
-                               'alpha': 0.5})
+        Parameters
+        ----------
+        popone : lib.hl_api_types.NodeCollection
+            source nest node collection
+        poptwo : lib.hl_api_types.NodeCollection
+            target nest node collection
+        conn_specs : dictionary
+            dictionary containing connection specs
+        syn_specs : dictionary
+            dictionary containing synaptic specs
 
-        ## Then we connect the external drive to the neurons with weight J_ex
-        nest.Connect(self.p_nu_ext, self.neurons,
-                     syn_spec={'weight': 1, 
-                               'receptor_type': 1})
+        Returns
+        -------
+        None.
+
+        """
+        nest.Connect(popone, poptwo, conn_spec=conn_specs, syn_spec=syn_specs)
+    
+    def connect_all(self, conn_specs, syn_specs):
+        """
+        Connect a vector containing populations with each other with given
+        connectivity and synaptic specifications.
+
+        Parameters
+        ----------
+        conn_specs : numpy ndarray
+            connectivity matrix
+        syn_specs : numpy ndarray
+            specifications for each synapse
+
+        Returns
+        -------
+        None.
+
+        """
+        r = list(range(len(self.__populations)))
+        R = itertools.product(r,r)
+        for x,y in R:
+            nest.Connect(self.__populations[x],
+                         self.__populations[y],
+                         conn_spec = {'rule': 'fixed_indegree', 
+                                      'indegree': int(conn_specs[y, x] * len(self.__populations[x]))},
+                         syn_spec = syn_specs[y, x])
         
-        ## Connect external input to selective pool
-        nest.Connect(self.p_nu_in, self.neurons_ex,
-                     syn_spec={'weight': 1, 
-                               'receptor_type': 1})
+                
 
-        ## Then we connect the the neurons to the spike detectors
-        nest.Connect(self.neurons_ex_s[:self.n_rec_ex], self.spike_recorder_ex)
-        nest.Connect(self.neurons_in[:self.n_rec_in], self.spike_recorder_in)
+    def add_stimulation(self, source, target):
+        """
+        Adds excitatory stimulation of the specified type to the specified target
+        population
 
+        Parameters
+        ----------
+        source : dictionary
+            Contains the type of stimulation source and the stimulation rate.
+        target : int
+            Specifies which population to connect to (index in the list of populations)
+
+        Returns
+        -------
+        None.
+
+        """
+        stimulus = nest.Create(source['type'])
+        stimulus.rate = source['rate']
+        nest.Connect(stimulus, self.__populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
+                                                                                                'weight': 1.})
+    
+    def get_pops(self):
+        """
+        returns a list of all populations in the network, in the order in which they were added.
+
+        Returns
+        -------
+        TYPE: list
+            A list of node collections.
+
+        """
+        return self.__populations
+    
+    def get_last_added_population(self):
+        """
+        returns the population that was last added to the network
+
+        Returns
+        -------
+        TYPE: lib.hl_api_types.NodeCollection
+            A nest node collection
+
+        """
+        return self.__populations[-1]
+    
     def simulate(self, t_sim):
-        # Simulate the network with specified
+        """
+        Runs the simulation for t_sim miliseconds.
+
+        Parameters
+        ----------
+        t_sim : float
+            Simulation time in miliseconds
+
+        Returns
+        -------
+        None.
+
+        """
         nest.Simulate(t_sim)
 
-    def connect(self):
-        pass
-
     def get_data(self):
-        # Define lists to store spike trains in
-        # self.spikes_ex = []
-        # self.spikes_in = []
-        
-        self.spike_times_ex = nest.GetStatus(self.spike_recorder_ex)
-        self.spike_times_in = nest.GetStatus(self.spike_recorder_in)
-        
+        """
+        Extracts multimeter and spikerecording data from the network and returns it in organized form.
 
-        # There are several ways in which you can obtain the data recorded by the spikerecorders
-        # One example is given below.
-        # You can get the recorded quantities from the spike recorder with nest.GetStatus
-        # You may loop over the entries of the GetStatus return
-        # you might want to sort the spike times, they are not by default
-        ## Your code here
-        
-        
-        self.idx_ex = np.argsort(self.spike_times_ex[0]['events']['senders'])
-        self.sorted_sx = self.spike_times_ex[0]['events']['senders'][self.idx_ex]
-        self.tmp_ex = self.spike_times_ex[0]['events']['times'][self.idx_ex]
+        Returns
+        -------
+        mmlist : list
+            Contains the 'events' dictionaries for each individual neuronal population
+        data : list
+            Contains a list with sorted spike times for each individual neuron
 
-        self.spikes_ex = np.split(self.tmp_ex, np.where(np.diff(self.sorted_sx) > 0)[0] + 1)
-        #for a in self.spikes_ex:
-        #    a.sort()
+        """
         
-        self.idx_in = np.argsort(self.spike_times_in[0]['events']['senders'])
-        self.sorted_si = self.spike_times_in[0]['events']['senders'][self.idx_in]
-        self.tmp_in = self.spike_times_in[0]['events']['times'][self.idx_in]
-
-        self.spikes_in = np.split(self.tmp_in, np.where(np.diff(self.sorted_si) > 0)[0] + 1)
-        #for b in self.spikes_in:
-        #    b.sort()
-        #for item in self.spike_times_ex:
-        #    self.spikes_ex.append(np.sort(item['events']['times']))
-        # 
-        #for item in self.spike_times_in:
-        #    self.spikes_in.append(np.sort(item['events']['times'])) #['times']
+        ## Get the data f rom the spike recorder
+        self.spike_times = nest.GetStatus(self.spike_recorder)
         
+        ## Data storage:
+        self.data = []
         
-        # hint: another option would be to obtain both the times and the senders (neurons).
-        # This way you obtain information about which neuron spiked at which time.
-        # e.g. senders = nest.GetStatus(self.spikes_recorder, 'events')[0]['senders']
-        #      times   = nest.GetStatus(self.spikes_recorder, 'events')[0]['times']
-        # Try to practice with the nest.GetStatus command.
-        
-        return self.spikes_ex, self.spikes_in, self.sorted_sx
+        ## Divide spike times to populations
+        for i in range(len(self.__populations)):
+            
+            self.IDs = list(self.__populations[i].get(['global_id']).values())[0]
+            self.min = min(self.IDs)
+            self.max = max(self.IDs)
+            
+            ## Get sender IDs and times (in ms)
+            self.senders = self.spike_times[0]['events']['senders']
+            self.times = self.spike_times[0]['events']['times']
+            
+            times = []
+            for n in range(self.min, self.max+1):
+                times.append(self.times[self.senders == n])
+            
+            self.data.append(times)
+            
+            ################################################
+            ## Get multimeter data
+            mmlist = []
+            for d in self.__devices:
+                mmlist.append(nest.GetStatus(d)[0]["events"])
+            
+        return mmlist, self.data
 
 # Helper functions
-def raster(spikes_ex, spikes_in, rec_start, rec_stop, figsize=(9, 5)):
+def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
+    """
+    Draws the scatterplot for the spiketimes of each neuronal population as well as
+    a histogram of spiketimes over all neurons.
 
-    spikes_ex_total = list(itertools.chain(*spikes_ex))
-    spikes_in_total = list(itertools.chain(*spikes_in))
-    spikes_total = spikes_ex_total + spikes_in_total
+    Parameters
+    ----------
+    spikes : nested list
+        Should be a list containing a separate list with spike times for each neuron
+    rec_start : float
+        starting time of the recording in ms.
+    rec_stop : float
+        stopping time of the recording in ms.
+    figsize : TYPE, optional
+        DESCRIPTION. The default is (9, 5).
 
-    n_rec_ex = len(spikes_ex)
-    n_rec_in = len(spikes_in)
+    Returns
+    -------
+    None.
+
+    """
+    #spikes_total = list(itertools.chain(*spikes))
+    
+    # An array containing all the arrays for each neuron
+    spikes_total = [element for sublist in spikes for element in sublist]
+    nrec_lst = []
+    
+    ## Get the size of each population
+    for i in spikes:
+        nrec_lst.append(len(i))
 
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(5, 1)
@@ -211,23 +259,25 @@ def raster(spikes_ex, spikes_in, rec_start, rec_stop, figsize=(9, 5)):
 
     ax2.set_ylabel('Rate [Hz]')
     ax2.set_xlabel('Time [ms]')
+    
+    color_list = ['b', 'r']
+    # for i in range(len(nrec_lst)):
+    #   r = random.randint(0,255)/255
+    #   g = random.randint(0,255)/255
+    #   b = random.randint(0,255)/255
+    #   color_list.append([r,g,b])
+    
+    for j in range(len(nrec_lst)): ## for each population
+        for i in range(nrec_lst[j]): ## Get the size of the population
+            ax1.plot(spikes_total[(i+ sum(nrec_lst[:j]))],
+                (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i+ sum(nrec_lst[:j])])),
+                linestyle='',
+                marker='o',
+                color=color_list[j],
+                markersize=1)
 
-    for i in range(n_rec_in):
-        ax1.plot(spikes_in[i],
-                 i*np.ones(len(spikes_in[i])),
-                 linestyle='',
-                 marker='o',
-                 color='r',
-                 markersize=1)
-    for i in range(n_rec_ex):
-        ax1.plot(spikes_ex[i],
-                 (i + n_rec_in)*np.ones(len(spikes_ex[i])),
-                 linestyle='',
-                 marker='o',
-                 color='b',
-                 markersize=1)
-
-    ax2 = ax2.hist(spikes_ex_total,
+    spikes_hist = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
+    ax2 = ax2.hist(spikes_hist,
                    range=(rec_start,rec_stop),
                    bins=int(rec_stop - rec_start))
 
@@ -235,16 +285,125 @@ def raster(spikes_ex, spikes_in, rec_start, rec_stop, figsize=(9, 5)):
 
     plt.savefig('raster.png')
 
-def rate(spikes_ex, spikes_in, rec_start, rec_stop):
-    spikes_ex_total = list(itertools.chain(*spikes_ex))
-    spikes_in_total = list(itertools.chain(*spikes_in))
-    spikes_total = spikes_ex_total + spikes_in_total
+def rate(spikes, rec_start, rec_stop):
+    """
+    Displays the average rate of spiking for the network in Hz.
+    
+    Parameters
+    ----------
+    spikes : nested list
+        Should be a list containing a separate list with spike times for each neuron
+    rec_start : float
+        starting time of the recording in ms.
+    rec_stop : float
+        stopping time of the recording in ms.
 
-    n_rec_ex = len(spikes_ex)
-    n_rec_in = len(spikes_in)
+    Returns
+    -------
+    None.
+
+    """
+    
+    spikes_total = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
+    
+    nrec_total = 0
+    for i in spikes:
+        nrec_total += len(i)
+    print(nrec_total)
 
     time_diff = (rec_stop - rec_start)/1000.
     average_firing_rate = (len(spikes_total)
-                           /(n_rec_ex + n_rec_in))
+                           /time_diff
+                           /(nrec_total))
     print(f'Average firing rate: {average_firing_rate} Hz')
+    
 
+def approximate_lfp_timecourse(data):
+    """
+    This function calculates the approximated lfp timecourse for the current layer using the
+    methodology from Mazzoni et al. (2015). Amplitude depends on the depth and location
+    of the recording electrode and should be estimated separately to save processing resources.
+    https://doi.org/10.1371%2Fjournal.pcbi.1004584
+    
+    Parameters
+    ----------
+    data : list
+        Should contain the 'events' dictionaries for each neuronal population
+        of the current layer
+
+    Returns
+    -------
+    normalized : numpy ndarray
+        A numpy ndarray containing the approximated normalized lfp timecourse
+        for the current layer
+
+    """
+    
+    ## Go through all different neuronal populations of the current layer
+    sums = []
+    mmall = []
+    for d in data:
+        ## get the relevant data for the population
+        senders = np.array(d["senders"])
+        I_syn = np.array(d["I_syn"])
+        
+        ## neuronal populations always have sequential IDs upon creation
+        ## so we just need the first and last ID of the current population
+        mn = min(senders)
+        mx = max(senders)
+        
+        ## get a list containing the synaptic current
+        ## recordings per neuron
+        mmdata = []
+        i = 0
+        for s in range(mn, mx+1):
+            mmdata.append( I_syn[senders == s] )
+            i += 1
+        
+        ## The currents are already sorted by time, just
+        ## sum them up at each point in time and save them in an array
+        currentsum = np.zeros(len(mmdata[0]))
+        for i in range(len(mmdata[0])):
+            tmpsum = 0
+            for n in mmdata:
+                tmpsum += n[i]
+            currentsum[i] = tmpsum
+        
+        ## Append to list. It now contains the sums of currents from each
+        ## individual neuronal population
+        sums.append(currentsum)
+        mmall.append(mmdata)
+    
+    
+    ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
+    subtracted = np.subtract(sums[0], 1.65*sums[1])
+    
+    normalized = normalize(subtracted)
+    for x in mmall:
+        for i in range(len(x)):
+            x[i] = normalize(x[i])
+    
+    ## return the normalized LFP timecourse.
+    return normalized, mmall
+
+def normalize(data):
+    """
+    Mean subtracted normalization procedure for a given array
+
+    Parameters
+    ----------
+    data : list or ndarray
+        array to be converted
+
+    Returns
+    -------
+    normalized : numpy ndarray
+        converted array
+
+    """
+    mean = np.mean(data)
+    ms = np.subtract(data,mean)
+    ## https://stackoverflow.com/questions/1735025/how-to-normalize-a-numpy-array-to-within-a-certain-range
+    normalized = 2.*(ms - np.min(ms))/np.ptp(ms)-1
+    
+    return normalized
