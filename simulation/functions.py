@@ -3,6 +3,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import nest
 import itertools
+import random
 
 ## 
 # Create classes
@@ -28,8 +29,8 @@ class Network:
             The neuron model name
         num_neurons : int
             number of neurons in the specified population
-        neuron_params : dictionary
-            parameters for the population
+        neuron_params : dictionary or list of dictionaries
+            parameters for the population. Randomly sampled for each neuron if list.
         neuron_positions : nest spatial data
             nest spatial data
         record_from_pop : boolean, optional
@@ -42,6 +43,12 @@ class Network:
         None.
 
         """
+        
+        ## If we get a list with parameter dictionaries sample randomly from them until we have
+        ## a list of the size of num_neurons. Nest only accepts one dictionary for all
+        ## or a list of dictionaries with size equal to the size of the population.
+        if not isinstance(neuron_params, dict):
+            neuron_params = random.choices(neuron_params, k=num_neurons)
         
         ## Create the neuronal population
         newpop = nest.Create(neuron_type, num_neurons, neuron_params, positions=neuron_positions)

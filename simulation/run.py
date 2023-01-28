@@ -2,9 +2,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
-from new_functions import Network, raster, rate, approximate_lfp_timecourse
-#import icsd
-
+from functions import Network, raster, rate, approximate_lfp_timecourse
+import elephant
 
 ## Set nest variables
 nest.ResetKernel()
@@ -62,6 +61,67 @@ neuron_params={
     "adapting_threshold": False
 }
 
+np2 = {
+    "V_m": -78.0417277018229,
+    "V_th": -49.63934810542196,
+    "g": 3.4780284104908676,
+    "E_L": -79.0417277018229,
+    "C_m": 60.72689987399939,
+    "t_ref": 1.4500000000000002,
+    "V_reset": -79.0417277018229,
+    "asc_init": [
+        0.0,
+        0.0
+    ],
+    "asc_decay": [
+        0.029999999999999992,
+        0.3
+    ],
+    "asc_amps": [
+        -23.825265478178427,
+        -292.06473034028727
+    ],
+    "tau_syn": [
+        5.5,
+        8.5,
+        2.8,
+        5.8
+    ],
+    "spike_dependent_threshold": False,
+    "after_spike_currents": True,
+    "adapting_threshold": False
+}
+
+np3={
+    "V_m": -79.0417277018229,
+    "V_th": -49.63934810542196,
+    "g": 4.4780284104908676,
+    "E_L": -79.0417277018229,
+    "C_m": 60.72689987399939,
+    "t_ref": 1.4500000000000002,
+    "V_reset": -79.0417277018229,
+    "asc_init": [
+        0.0,
+        0.0
+    ],
+    "asc_decay": [
+        0.029999999999999992,
+        0.3
+    ],
+    "asc_amps": [
+        -23.825265478178427,
+        -292.06473034028727
+    ],
+    "tau_syn": [
+        5.5,
+        8.5,
+        2.8,
+        5.8
+    ],
+    "spike_dependent_threshold": False,
+    "after_spike_currents": True,
+    "adapting_threshold": False
+}
 ################################
 ## Specify synapse properties ##
 ################################
@@ -75,7 +135,7 @@ nest.CopyModel("static_synapse", "inhibitory",
                {"weight": params['J']*-params['g'], "delay": delay, "receptor_type": 2})
 
 
-ext_rate = 1000*8
+ext_rate = 900*8
 
 ########################
 ## Create the network ##
@@ -90,8 +150,8 @@ pos_in = nest.spatial.free(nest.random.normal(mean=0., std=1.),
                         num_dimensions=3)
 
 ## Add populations to the network
-network.addpop('glif_psc', params['N'][0], neuron_params, pos_ex, record_from_pop=True, nrec=800)
-network.addpop('glif_psc', params['N'][1], neuron_params, pos_in, record_from_pop=True, nrec=200)
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
 
 # add stimulation
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
@@ -135,8 +195,4 @@ plt.show()
 ## plot the timecourse in the recorded time window
 plt.plot(np.unique(mmdata[0]["times"]), lfp_tc)
 plt.show
-
-
-
-#meow = icsd.StandardCSD([lfp_tc, ])
 
