@@ -1,9 +1,12 @@
+## install iCSD if needed:
+## pip install git+https://github.com/espenhgn/iCSD.git
+
 ## Import libraries
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
 from functions import Network, raster, rate, approximate_lfp_timecourse
-import elephant
+#import icsd
 
 ## Set nest variables
 nest.ResetKernel()
@@ -153,15 +156,51 @@ pos_in = nest.spatial.free(nest.random.normal(mean=0., std=1.),
 network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
 network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
 
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+
 # add stimulation
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=1) # to inhibitory population
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=2)
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=3)
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=4) # to excitatory population
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=5) # to inhibitory population
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=6)
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=7)
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=8)
+network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=9)
 
 ## Define connectivity matrix
-conn_matrix = np.array([[0.1, 0.1],
-                        [0.1, 0.1]])
-syn_matrix = np.array([["excitatory", "inhibitory"],
-                       ["excitatory", "inhibitory"]])
+conn_matrix = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+                        [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
+syn_matrix = np.array([["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
+                       ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"]])
 
 ## Connect all populations to each other according to the
 ## connectivity matrix and synaptic specifications
@@ -181,18 +220,31 @@ plt.show()
 rate(spikes, params['rec_start'], params['rec_stop'])
 
 ## Approximate the lfp timecourse
-lfp_tc, all_tc = approximate_lfp_timecourse(mmdata)
+#lfp_tc_l1, all_tc = approximate_lfp_timecourse(mmdata)
+lfp_tc_l1 = approximate_lfp_timecourse(mmdata[0:2])
+lfp_tc_l2 = approximate_lfp_timecourse(mmdata[2:4])
+lfp_tc_l3 = approximate_lfp_timecourse(mmdata[4:6])
+lfp_tc_l4 = approximate_lfp_timecourse(mmdata[6:8])
+lfp_tc_l5 = approximate_lfp_timecourse(mmdata[8:10])
+
 
 t = np.unique(mmdata[0]["times"])
 
-for l in all_tc:
-    for x in l:
-        plt.plot(t, x)
+# for l in all_tc:
+#     for x in l:
+#         plt.plot(t, x)
 
-plt.plot(t, lfp_tc, c='black', lw=5)
-plt.show()    
+# plt.plot(t, lfp_tc, c='black', lw=5)
+# plt.show()    
 
 ## plot the timecourse in the recorded time window
-plt.plot(np.unique(mmdata[0]["times"]), lfp_tc)
+plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l1)
+plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l2)
+plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l3)
+plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l4)
+plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l5)
 plt.show
 
+newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
+
+#icsd.CSD(lfp_tc)

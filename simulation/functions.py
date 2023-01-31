@@ -267,7 +267,7 @@ def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
     ax2.set_ylabel('Rate [Hz]')
     ax2.set_xlabel('Time [ms]')
     
-    color_list = ['b', 'r']
+    color_list = ['b', 'r']*5
     # for i in range(len(nrec_lst)):
     #   r = random.randint(0,255)/255
     #   g = random.randint(0,255)/255
@@ -391,7 +391,7 @@ def approximate_lfp_timecourse(data):
             x[i] = normalize(x[i])
     
     ## return the normalized LFP timecourse.
-    return normalized, mmall
+    return normalized#, mmall
 
 def normalize(data):
     """
