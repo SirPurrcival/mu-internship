@@ -153,20 +153,20 @@ pos_in = nest.spatial.free(nest.random.normal(mean=0., std=1.),
                         num_dimensions=3)
 
 ## Add populations to the network
-network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
-network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
 
-network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
-network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
 
-network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
-network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
 
-network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
-network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+network.addpop('glif_psc', 400, [neuron_params, np2, np3], pos_ex, label="E", nrec=400)
+network.addpop('glif_psc', 100, [neuron_params, np2, np3], pos_in, label="I", nrec=100)
 
-network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, nrec=800)
-network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, nrec=200)
+network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
+network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
 
 # add stimulation
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
@@ -207,43 +207,56 @@ syn_matrix = np.array([["excitatory", "inhibitory", "excitatory", "inhibitory","
 network.connect_all(conn_matrix, syn_matrix)
 
 ## simulate
+print("Starting simulation...")
 network.simulate(params['sim_time'])
+print("Done! Fetching data...")
 
 ## Extract data from the network
 mmdata, spikes = network.get_data()
+print("Done! Graphing spikes...")
+
+## Define colors used in the raster plot per neuron population based on label
+label = network.get_labels()
+colors = ["b" if l == "E" else "r" for l in label]
 
 ## Plot spike data
-raster(spikes, params['rec_start'], params['rec_stop'])
+raster(spikes, params['rec_start'], params['rec_stop'], colors)
 plt.show()
 
 ## Display the average firing rate in Hz
 rate(spikes, params['rec_start'], params['rec_stop'])
+print("Done! Estimating LFPs per layer...")
 
-## Approximate the lfp timecourse
+times = np.unique(mmdata[0]["times"])
+
+## Approximate the lfp timecourse per layer
 #lfp_tc_l1, all_tc = approximate_lfp_timecourse(mmdata)
-lfp_tc_l1 = approximate_lfp_timecourse(mmdata[0:2])
-lfp_tc_l2 = approximate_lfp_timecourse(mmdata[2:4])
-lfp_tc_l3 = approximate_lfp_timecourse(mmdata[4:6])
-lfp_tc_l4 = approximate_lfp_timecourse(mmdata[6:8])
-lfp_tc_l5 = approximate_lfp_timecourse(mmdata[8:10])
+lfp_tc_l1 = approximate_lfp_timecourse(mmdata[0:2], times, label[0:2])
+print("Layer 1 finished")
+lfp_tc_l2 = approximate_lfp_timecourse(mmdata[2:4], times, label[2:4])
+print("Layer 2 finished")
+lfp_tc_l3 = approximate_lfp_timecourse(mmdata[4:6], times, label[4:6])
+print("Layer 3 finished")
+lfp_tc_l4 = approximate_lfp_timecourse(mmdata[6:8], times, label[6:8])
+print("Layer 4 finished")
+lfp_tc_l5 = approximate_lfp_timecourse(mmdata[8:10], times, label[8:10])
+print("Layer 5 finished, plotting...")
 
+## Correct for data loss during lfp approximation 
+## (6ms due to methodological reasons, see approximation function)
+t = np.argwhere(times - min(times) >= 6)
+t = t.reshape(t.shape[0],)
 
-t = np.unique(mmdata[0]["times"])
-
-# for l in all_tc:
-#     for x in l:
-#         plt.plot(t, x)
-
-# plt.plot(t, lfp_tc, c='black', lw=5)
-# plt.show()    
+times = mmdata[0]["times"][t]
 
 ## plot the timecourse in the recorded time window
-plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l1)
-plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l2)
-plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l3)
-plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l4)
-plt.plot(np.unique(mmdata[0]["times"]), lfp_tc_l5)
+plt.plot(t, lfp_tc_l1)
+plt.plot(t, lfp_tc_l2)
+plt.plot(t, lfp_tc_l3)
+plt.plot(t, lfp_tc_l4)
+plt.plot(t, lfp_tc_l5)
 plt.show
+print("All done!")
 
 newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
 

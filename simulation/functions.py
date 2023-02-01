@@ -11,6 +11,7 @@ class Network:
     def __init__(self, resolution, rec_start, rec_stop):
         self.__populations = []
         self.__devices = []
+        self.__labels = []
         self.rec_start = rec_start
         self.rec_stop = rec_stop
         self.resolution = resolution
@@ -18,7 +19,7 @@ class Network:
         self.spike_recorder.start = self.rec_start
         self.spike_recorder.stop = self.rec_stop
 
-    def addpop(self, neuron_type, num_neurons, neuron_params, neuron_positions, 
+    def addpop(self, neuron_type, num_neurons, neuron_params, neuron_positions, label, 
                record_from_pop=True, nrec=0.):
         """
         Adds a population to the network with given parameters
@@ -33,10 +34,12 @@ class Network:
             parameters for the population. Randomly sampled for each neuron if list.
         neuron_positions : nest spatial data
             nest spatial data
+        label : string
+            "E" for excitatory population, "I" for inhibitory population.
         record_from_pop : boolean, optional
             Whether or not to record from this population. The default is True.
         nrec : int, optional
-            number of neurons to record from. The default is 0..
+            number of neurons to record from. The default is 0.
 
         Returns
         -------
@@ -64,6 +67,7 @@ class Network:
             self.__devices.append(mm)
         ## Add it to internal list of populations
         self.__populations.append(newpop)
+        self.__labels.append(label)
     
     def connect(self, popone, poptwo, conn_specs, syn_specs):
         """
@@ -176,6 +180,18 @@ class Network:
 
         """
         nest.Simulate(t_sim)
+    
+    def get_labels(self):
+        """
+        Returns the labels for the populations in the network
+
+        Returns
+        -------
+        list
+            A list containing the labels indicating either excitatory or inhibitory populations.
+
+        """
+        return self.__labels
 
     def get_data(self):
         """
@@ -222,7 +238,7 @@ class Network:
         return mmlist, self.data
 
 # Helper functions
-def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
+def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
     """
     Draws the scatterplot for the spiketimes of each neuronal population as well as
     a histogram of spiketimes over all neurons.
@@ -235,6 +251,8 @@ def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
         starting time of the recording in ms.
     rec_stop : float
         stopping time of the recording in ms.
+    colors : list
+        contains the list of colors for each population
     figsize : TYPE, optional
         DESCRIPTION. The default is (9, 5).
 
@@ -267,20 +285,13 @@ def raster(spikes, rec_start, rec_stop, figsize=(9, 5)):
     ax2.set_ylabel('Rate [Hz]')
     ax2.set_xlabel('Time [ms]')
     
-    color_list = ['b', 'r']*5
-    # for i in range(len(nrec_lst)):
-    #   r = random.randint(0,255)/255
-    #   g = random.randint(0,255)/255
-    #   b = random.randint(0,255)/255
-    #   color_list.append([r,g,b])
-    
     for j in range(len(nrec_lst)): ## for each population
         for i in range(nrec_lst[j]): ## Get the size of the population
             ax1.plot(spikes_total[(i+ sum(nrec_lst[:j]))],
                 (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i+ sum(nrec_lst[:j])])),
                 linestyle='',
                 marker='o',
-                color=color_list[j],
+                color=colors[j],
                 markersize=1)
 
     spikes_hist = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
@@ -325,7 +336,7 @@ def rate(spikes, rec_start, rec_stop):
     print(f'Average firing rate: {average_firing_rate} Hz')
     
 
-def approximate_lfp_timecourse(data):
+def approximate_lfp_timecourse(data, times, label):
     """
     This function calculates the approximated lfp timecourse for the current layer using the
     methodology from Mazzoni et al. (2015). Amplitude depends on the depth and location
@@ -337,6 +348,11 @@ def approximate_lfp_timecourse(data):
     data : list
         Should contain the 'events' dictionaries for each neuronal population
         of the current layer
+    times: list
+        Contains the timesteps in miliseconds
+    label: list
+        Contains the label of each neuronal population in data indicating
+        whether they are excitatory or inhibitory
 
     Returns
     -------
@@ -346,13 +362,20 @@ def approximate_lfp_timecourse(data):
 
     """
     
+    ## calculate a delay of 6ms depending on resolution
+    t = np.argwhere(times - min(times) >= 6)
+    t = t.reshape(t.shape[0],)
+    
+    ## initialize arrays that will contain the sums of excitatory and inhibitory currents
+    cin = np.zeros((len(t),))
+    cex = np.zeros((len(t),))
+    
     ## Go through all different neuronal populations of the current layer
-    sums = []
-    mmall = []
-    for d in data:
+    for d in range(len(data)):
         ## get the relevant data for the population
-        senders = np.array(d["senders"])
-        I_syn = np.array(d["I_syn"])
+        senders = np.array(data[d]["senders"])
+        I_syn = np.array(data[d]["I_syn"])
+        l = label[d]
         
         ## neuronal populations always have sequential IDs upon creation
         ## so we just need the first and last ID of the current population
@@ -362,33 +385,44 @@ def approximate_lfp_timecourse(data):
         ## get a list containing the synaptic current
         ## recordings per neuron
         mmdata = []
-        i = 0
         for s in range(mn, mx+1):
             mmdata.append( I_syn[senders == s] )
-            i += 1
+        
         
         ## The currents are already sorted by time, just
         ## sum them up at each point in time and save them in an array
-        currentsum = np.zeros(len(mmdata[0]))
-        for i in range(len(mmdata[0])):
-            tmpsum = 0
-            for n in mmdata:
-                tmpsum += n[i]
-            currentsum[i] = tmpsum
-        
+        currentsum = np.zeros(len(t))
+        if l == "E":
+            for i in range(min(t), max(t)+1):
+                tmpsum = 0
+                for n in mmdata:
+                    tmpsum += n[i]
+                currentsum[i-min(t)] = tmpsum
+        elif l == "I":
+            for i in range(max(t)-min(t)+1):
+                tmpsum = 0
+                for n in mmdata:
+                    tmpsum += n[i]
+                currentsum[i] = tmpsum
+            
         ## Append to list. It now contains the sums of currents from each
         ## individual neuronal population
-        sums.append(currentsum)
-        mmall.append(mmdata)
+        if l == "E":
+            cex += currentsum
+        elif l == "I":
+            cin += currentsum
+        else:
+            raise Exception("Check if you labelled the neuronal populations correctly (E for excitatory, I for inhibitory)")
+        #mmall.append(mmdata)
     
     
     ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
-    subtracted = np.subtract(sums[0], 1.65*sums[1])
     
-    normalized = normalize(subtracted)
-    for x in mmall:
-        for i in range(len(x)):
-            x[i] = normalize(x[i])
+    normalized = normalize(cex - 1.65*cin)
+    
+    # for x in mmall:
+    #     for i in range(len(x)):
+    #         x[i] = normalize(x[i])
     
     ## return the normalized LFP timecourse.
     return normalized#, mmall
