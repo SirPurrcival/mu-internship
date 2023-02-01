@@ -162,7 +162,7 @@ num_parameters = 14
 
 Nscale = 0.05
 Kscale = 1
-Rscale = Nscale
+Rscale = Nscale * 0.5
 
 # Overview
 layers = ['L1', 'L23', 'L4', 'L5', 'L6']

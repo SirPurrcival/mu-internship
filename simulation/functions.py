@@ -10,14 +10,13 @@ import random
 class Network:
     def __init__(self, resolution, rec_start, rec_stop):
         self.__populations = []
-        self.__devices = []
+        self.__multimeter = []
+        self.__spike_recorder = []
         self.__labels = []
+        self.__nrec = []
         self.rec_start = rec_start
         self.rec_stop = rec_stop
         self.resolution = resolution
-        self.spike_recorder = nest.Create("spike_recorder")
-        self.spike_recorder.start = self.rec_start
-        self.spike_recorder.stop = self.rec_stop
 
     def addpop(self, neuron_type, num_neurons, neuron_params, neuron_positions, label, 
                record_from_pop=True, nrec=0.):
@@ -53,20 +52,31 @@ class Network:
         if not isinstance(neuron_params, dict):
             neuron_params = random.choices(neuron_params, k=num_neurons)
         
-        print(nrec)
+        self.__nrec.append(nrec)
         
         ## Create the neuronal population
         newpop = nest.Create(neuron_type, num_neurons, neuron_params, positions=neuron_positions)
         ## If record_from_pop is true, also connect the spike recorder and multimeter to it
         if record_from_pop:
-            nest.Connect(newpop[:nrec], self.spike_recorder)
+            ## Create recording devices
+            sr = nest.Create("spike_recorder")
             mm = nest.Create("multimeter",
                              params={"interval": self.resolution,
                              "record_from": ["V_m", "I_syn"]})
+            
+            ## Set start/stop times
+            sr.start = self.rec_start
+            sr.stop = self.rec_stop
             mm.start = self.rec_start
             mm.stop = self.rec_stop
+            
+            ## Connect devices to the new population
+            nest.Connect(newpop[:nrec], sr)
             nest.Connect(mm, newpop[:nrec])
-            self.__devices.append(mm)
+            
+            ## append to list for data extraction later
+            self.__multimeter.append(mm)
+            self.__spike_recorder.append(sr)
         ## Add it to internal list of populations
         self.__populations.append(newpop)
         self.__labels.append(label)
@@ -209,33 +219,45 @@ class Network:
         """
         
         ## Get the data f rom the spike recorder
-        self.spike_times = nest.GetStatus(self.spike_recorder)
+        #self.spike_times = nest.GetStatus(self.spike_recorder)
         
         ## Data storage:
         self.data = []
         
         ## Divide spike times to populations
-        for i in range(len(self.__populations)):
+        for i in range(len(self.__spike_recorder)):
             
-            self.IDs = list(self.__populations[i].get(['global_id']).values())[0]
-            self.min = min(self.IDs)
-            self.max = max(self.IDs)
+            self.spike_times = nest.GetStatus(self.__spike_recorder[i])
             
-            ## Get sender IDs and times (in ms)
-            self.senders = self.spike_times[0]['events']['senders']
-            self.times = self.spike_times[0]['events']['times']
+            self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+            
+            ## Create a list containing empty lists with size equal to nrec of that population.
+            ## For each of those lists get the range of IDs from the population
+            ## The IDs are then lowest ID of the population + nrec
+            ## Fill in the data for the corresponding senders == IDs
+            ## => Profit
             
             times = []
-            for n in range(self.min, self.max+1):
-                times.append(self.times[self.senders == n])
+            if not self.IDs.size == 0:
+                self.min = min(self.IDs)
+                self.max = max(self.IDs)
+                print(self.min, self.max)
+                
+                ## Get sender IDs and times (in ms)
+                self.senders = self.spike_times[0]['events']['senders']
+                self.times = self.spike_times[0]['events']['times']
+                
+                
+                for n in range(self.min, self.max+1):
+                    times.append(self.times[self.senders == n])
             
             self.data.append(times)
             
-            ################################################
-            ## Get multimeter data
-            mmlist = []
-            for d in self.__devices:
-                mmlist.append(nest.GetStatus(d)[0]["events"])
+        ################################################
+        ## Get multimeter data
+        mmlist = []
+        for d in self.__multimeter:
+            mmlist.append(nest.GetStatus(d)[0]["events"])
             
         return mmlist, self.data
 
