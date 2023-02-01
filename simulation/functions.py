@@ -53,6 +53,8 @@ class Network:
         if not isinstance(neuron_params, dict):
             neuron_params = random.choices(neuron_params, k=num_neurons)
         
+        print(nrec)
+        
         ## Create the neuronal population
         newpop = nest.Create(neuron_type, num_neurons, neuron_params, positions=neuron_positions)
         ## If record_from_pop is true, also connect the spike recorder and multimeter to it
@@ -63,7 +65,7 @@ class Network:
                              "record_from": ["V_m", "I_syn"]})
             mm.start = self.rec_start
             mm.stop = self.rec_stop
-            nest.Connect(mm, newpop)
+            nest.Connect(mm, newpop[:nrec])
             self.__devices.append(mm)
         ## Add it to internal list of populations
         self.__populations.append(newpop)
@@ -270,6 +272,8 @@ def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
     ## Get the size of each population
     for i in spikes:
         nrec_lst.append(len(i))
+        
+    print(nrec_lst)
 
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(5, 1)

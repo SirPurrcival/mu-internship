@@ -160,6 +160,10 @@ num_types  = 4
 num_layertypes = 17
 num_parameters = 14
 
+Nscale = 0.05
+Kscale = 1
+Rscale = Nscale
+
 # Overview
 layers = ['L1', 'L23', 'L4', 'L5', 'L6']
 types  = ['E',  'Pvalb', 'Htr3a', 'Sst']
@@ -202,29 +206,30 @@ C = np.array([[0.656, 0.356, 0.093, 0.068, 0.4644, 0.148, 0, 0, 0, 0.148, 0, 0, 
               [0, 0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0.03, 0.03, 0.03, 0.1, 0.08, 0.1, 0.08],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.03, 0.03, 0.03, 0.03, 0.1, 0.05, 0.05, 0.05],
               [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.03, 0.03, 0.03, 0.03, 0.1, 0.05, 0.05, 0.03]])
+C *= Kscale
 
 # Populations
-network.addpop('glif_psc', 776, CELLS['L1_Htr3a'], pos_ex, label="I", nrec=776)
+network.addpop('glif_psc', int(776*Nscale), CELLS['L1_Htr3a'], pos_ex, label="I", nrec=int(Rscale* 776))
 
-network.addpop('glif_psc', 47386, CELLS['L23_E'], pos_ex, label="E", nrec=47386)
-network.addpop('glif_psc', 3876, CELLS['L23_Pvalb'], pos_ex, label="I", nrec=3876)
-network.addpop('glif_psc', 2807, CELLS['L23_Sst'], pos_ex, label="I", nrec=2807)
-network.addpop('glif_psc', 6683, CELLS['L23_Htr3a'], pos_ex, label="I", nrec=6683)
+network.addpop('glif_psc', int(47386*Nscale), CELLS['L23_E'], pos_ex, label="E", nrec=int(Rscale*47386))
+network.addpop('glif_psc', int(3876*Nscale), CELLS['L23_Pvalb'], pos_ex, label="I", nrec=int(Rscale*3876))
+network.addpop('glif_psc', int(2807*Nscale), CELLS['L23_Sst'], pos_ex, label="I", nrec=int(Rscale*2807))
+network.addpop('glif_psc', int(6683*Nscale), CELLS['L23_Htr3a'], pos_ex, label="I", nrec=int(Rscale*6683))
 
-network.addpop('glif_psc', 70387, CELLS['L4_E'], pos_ex, label="E", nrec=70387)
-network.addpop('glif_psc', 9502, CELLS['L4_Pvalb'], pos_ex, label="I", nrec=9502)
-network.addpop('glif_psc', 5455, CELLS['L4_Sst'], pos_ex, label="I", nrec=5455)
-network.addpop('glif_psc', 2640, CELLS['L4_Htr3a'], pos_ex, label="I", nrec=2640)
+network.addpop('glif_psc', int(70387*Nscale), CELLS['L4_E'], pos_ex, label="E", nrec=int(Rscale*70387))
+network.addpop('glif_psc', int(9502*Nscale), CELLS['L4_Pvalb'], pos_ex, label="I", nrec=int(Rscale*9502))
+network.addpop('glif_psc', int(5455*Nscale), CELLS['L4_Sst'], pos_ex, label="I", nrec=int(Rscale*5455))
+network.addpop('glif_psc', int(2640*Nscale), CELLS['L4_Htr3a'], pos_ex, label="I", nrec=int(Rscale*2640))
 
-network.addpop('glif_psc', 20740, CELLS['L5_E'], pos_ex, label="E", nrec=20740)
-network.addpop('glif_psc', 2186, CELLS['L5_Pvalb'], pos_ex, label="I", nrec=2186)
-network.addpop('glif_psc', 1958, CELLS['L5_Sst'], pos_ex, label="I", nrec=1958)
-network.addpop('glif_psc', 410, CELLS['L5_Htr3a'], pos_ex, label="I", nrec=410)
+network.addpop('glif_psc', int(20740*Nscale), CELLS['L5_E'], pos_ex, label="E", nrec=int(Rscale*20740))
+network.addpop('glif_psc', int(2186*Nscale), CELLS['L5_Pvalb'], pos_ex, label="I", nrec=int(Rscale*2186))
+network.addpop('glif_psc', int(1958*Nscale), CELLS['L5_Sst'], pos_ex, label="I", nrec=int(Rscale*1958))
+network.addpop('glif_psc', int(410*Nscale), CELLS['L5_Htr3a'], pos_ex, label="I", nrec=int(Rscale*410))
 
-network.addpop('glif_psc', 19839, CELLS['L6_E'], pos_ex, label="E", nrec=19839)
-network.addpop('glif_psc', 1869, CELLS['L6_Pvalb'], pos_ex, label="I", nrec=1869)
-network.addpop('glif_psc', 1869, CELLS['L6_Sst'], pos_ex, label="I", nrec=1869)
-network.addpop('glif_psc', 325, CELLS['L6_Htr3a'], pos_ex, label="I", nrec=325)
+network.addpop('glif_psc', int(19839*Nscale), CELLS['L6_E'], pos_ex, label="E", nrec=int(Rscale*19839))
+network.addpop('glif_psc', int(1869*Nscale), CELLS['L6_Pvalb'], pos_ex, label="I", nrec=int(Rscale*1869))
+network.addpop('glif_psc', int(1869*Nscale), CELLS['L6_Sst'], pos_ex, label="I", nrec=int(Rscale*1869))
+network.addpop('glif_psc', int(325*Nscale), CELLS['L6_Htr3a'], pos_ex, label="I", nrec=int(Rscale*325))
 
 # # add stimulation
 network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
@@ -312,15 +317,15 @@ times = np.unique(mmdata[0]["times"])
 
 ## Approximate the lfp timecourse per layer
 #lfp_tc_l1, all_tc = approximate_lfp_timecourse(mmdata)
-lfp_tc_l1 = approximate_lfp_timecourse(mmdata[0:2], times, label[0:2])
+lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times, label[0])
 print("Layer 1 finished")
-lfp_tc_l2 = approximate_lfp_timecourse(mmdata[2:4], times, label[2:4])
+lfp_tc_l2 = approximate_lfp_timecourse(mmdata[1:5], times, label[1:5])
 print("Layer 2 finished")
-lfp_tc_l3 = approximate_lfp_timecourse(mmdata[4:6], times, label[4:6])
+lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times, label[5:9])
 print("Layer 3 finished")
-lfp_tc_l4 = approximate_lfp_timecourse(mmdata[6:8], times, label[6:8])
+lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times, label[9:13])
 print("Layer 4 finished")
-lfp_tc_l5 = approximate_lfp_timecourse(mmdata[8:10], times, label[8:10])
+lfp_tc_l5 = approximate_lfp_timecourse(mmdata[13:17], times, label[13:17])
 print("Layer 5 finished, plotting...")
 
 ## Correct for data loss during lfp approximation 
@@ -340,5 +345,6 @@ plt.show
 print("All done!")
 
 newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
+sum([38, 2369, 193, 140, 334, 3519, 475, 272, 132, 1037, 109, 97, 20, 991, 93, 93, 16])
 
 #icsd.CSD(lfp_tc)
