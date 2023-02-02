@@ -229,29 +229,37 @@ class Network:
             
             self.spike_times = nest.GetStatus(self.__spike_recorder[i])
             
-            self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+            #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+            
+            
+            
+            
             
             ## Create a list containing empty lists with size equal to nrec of that population.
             ## For each of those lists get the range of IDs from the population
             ## The IDs are then lowest ID of the population + nrec
             ## Fill in the data for the corresponding senders == IDs
-            ## => Profit
+            ## => 
+            tmp = [[]] * self.__nrec[i]
+            IDs = list(self.__populations[i].get(['global_id']).values())[0]
+            mn = min(IDs)
+            mx = mn + self.__nrec[i]
             
-            times = []
-            if not self.IDs.size == 0:
-                self.min = min(self.IDs)
-                self.max = max(self.IDs)
-                print(self.min, self.max)
-                
-                ## Get sender IDs and times (in ms)
-                self.senders = self.spike_times[0]['events']['senders']
-                self.times = self.spike_times[0]['events']['times']
-                
-                
-                for n in range(self.min, self.max+1):
-                    times.append(self.times[self.senders == n])
+            # times = []
+            # self.min = min(self.IDs)
+            # self.max = max(self.IDs)
+            print(mn, mx)
             
-            self.data.append(times)
+            ## Get sender IDs and times (in ms)
+            self.senders = self.spike_times[0]['events']['senders']
+            self.times = self.spike_times[0]['events']['times']
+            
+            i = 0
+            for n in range(mn, mx+1):
+                tmp[0].append(self.times[self.senders == n])
+                i += 1
+            
+            self.data.append(tmp[0])
             
         ################################################
         ## Get multimeter data
