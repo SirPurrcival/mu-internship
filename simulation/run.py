@@ -19,6 +19,8 @@ nest.resolution = resolution
 ## Set parameters for the simulation ##
 #######################################
 
+print("Begin setup")
+
 CELLS = np.load('cells.npy', allow_pickle=True).item()
 
 params = {
@@ -35,98 +37,7 @@ params = {
     'sim_time': 1000.
     }
 
-# neuron_params={
-#     "V_m": -79.0417277018229,
-#     "V_th": -49.63934810542196,
-#     "g": 3.4780284104908676,
-#     "E_L": -79.0417277018229,
-#     "C_m": 60.72689987399939,
-#     "t_ref": 1.4500000000000002,
-#     "V_reset": -79.0417277018229,
-#     "asc_init": [
-#         0.0,
-#         0.0
-#     ],
-#     "asc_decay": [
-#         0.029999999999999992,
-#         0.3
-#     ],
-#     "asc_amps": [
-#         -23.825265478178427,
-#         -292.06473034028727
-#     ],
-#     "tau_syn": [
-#         5.5,
-#         8.5,
-#         2.8,
-#         5.8
-#     ],
-#     "spike_dependent_threshold": False,
-#     "after_spike_currents": True,
-#     "adapting_threshold": False
-# }
 
-# np2 = {
-#     "V_m": -78.0417277018229,
-#     "V_th": -49.63934810542196,
-#     "g": 3.4780284104908676,
-#     "E_L": -79.0417277018229,
-#     "C_m": 60.72689987399939,
-#     "t_ref": 1.4500000000000002,
-#     "V_reset": -79.0417277018229,
-#     "asc_init": [
-#         0.0,
-#         0.0
-#     ],
-#     "asc_decay": [
-#         0.029999999999999992,
-#         0.3
-#     ],
-#     "asc_amps": [
-#         -23.825265478178427,
-#         -292.06473034028727
-#     ],
-#     "tau_syn": [
-#         5.5,
-#         8.5,
-#         2.8,
-#         5.8
-#     ],
-#     "spike_dependent_threshold": False,
-#     "after_spike_currents": True,
-#     "adapting_threshold": False
-# }
-
-# np3={
-#     "V_m": -79.0417277018229,
-#     "V_th": -49.63934810542196,
-#     "g": 4.4780284104908676,
-#     "E_L": -79.0417277018229,
-#     "C_m": 60.72689987399939,
-#     "t_ref": 1.4500000000000002,
-#     "V_reset": -79.0417277018229,
-#     "asc_init": [
-#         0.0,
-#         0.0
-#     ],
-#     "asc_decay": [
-#         0.029999999999999992,
-#         0.3
-#     ],
-#     "asc_amps": [
-#         -23.825265478178427,
-#         -292.06473034028727
-#     ],
-#     "tau_syn": [
-#         5.5,
-#         8.5,
-#         2.8,
-#         5.8
-#     ],
-#     "spike_dependent_threshold": False,
-#     "after_spike_currents": True,
-#     "adapting_threshold": False
-# }
 ################################
 ## Specify synapse properties ##
 ################################
@@ -137,22 +48,16 @@ nest.CopyModel("static_synapse", "E",
                {"weight": params['J'], "delay": delay, "receptor_type": 1})
 # inhbitiory input to receptor_type 2 (makes weight automatically postive if negative weight is supplied)
 nest.CopyModel("static_synapse", "I",
-               {"weight": params['J']*-params['g'], "delay": delay, "receptor_type": 2})
+               {"weight": params['J']*params['g'], "delay": delay, "receptor_type": 2})
 
 
-ext_rate = 900*8
+
 
 ########################
 ## Create the network ##
 ########################
 
 network = Network(resolution, params['rec_start'], params['rec_stop'])
-
-## Distribute the point neurons in space to prepare for LFP approximation
-pos_ex = nest.spatial.free(nest.random.normal(mean=0.5, std=1.),
-                        num_dimensions=3)
-pos_in = nest.spatial.free(nest.random.normal(mean=0., std=1.),
-                        num_dimensions=3)
 
 # Count of overview
 num_layers = 5
@@ -161,14 +66,25 @@ num_layertypes = 17
 num_parameters = 14
 
 Nscale = 0.05
-Kscale = 1
+Kscale = 0.28
+Sscale = 1
 Rscale = Nscale * 0.5
+
+ext_rate = 900*8 * Kscale
 
 # Overview
 layers = ['L1', 'L23', 'L4', 'L5', 'L6']
 types  = ['E',  'Pvalb', 'Htr3a', 'Sst']
-layertypes = ['L1_Htr3a', 'L23_E', 'L23_Pvalb', 'L23_Htr3a', 'L23_Sst', 'L4_E', 'L4_Pvalb', 'L4_Htr3a', 'L4_Sst', 'L5_E', 'L5_Pvalb', 'L5_Htr3a', 'L5_Sst', 'L6_E', 'L6_Pvalb', 'L6_Htr3a', 'L6_Sst']
+num_neurons = [776, 47386, 3876, 2807, 6683, 70387, 9502, 5455, 2640, 20740, 2186, 1958, 410, 19839, 1869, 1869, 325 ]
+layertypes = ['L1_Htr3a', 'L23_E', 'L23_Pvalb', 'L23_Sst', 'L23_Htr3a' , 'L4_E', 'L4_Pvalb', 'L4_Sst', 'L4_Htr3a',  'L5_E', 'L5_Pvalb', 'L5_Sst', 'L5_Htr3a', 'L6_E', 'L6_Pvalb',  'L6_Sst', 'L6_Htr3a']
+label = ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr']
 parameters = ['adapting_threshold', 'after_spike_currents', 'asc_amps', 'asc_decay', 'asc_init', 'C_m', 'E_L', 'g', 'spike_dependent_threshold', 't_ref', 'tau_syn', 'V_m', 'V_reset', 'V_th']
+
+# Populations
+print("Populating network...")
+for i in range(len(layertypes)):
+    network.addpop('glif_psc', int(num_neurons[i]*Nscale), CELLS[layertypes[i]], label=label[i], nrec=int(Rscale* num_neurons[i]))
+
 
 S = np.array([["I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I"],
               ["E","E","E","E","E","E","E","E","E","E","E","E","E","E","E","E","E"], 
@@ -188,112 +104,59 @@ S = np.array([["I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","
               ["I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I"],
               ["I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I"]])
 
+SS = np.array([[1.73, 0.53, 0.48, 0.57, 0.78, 0.42, 0   , 0   , 0   , 0.42, 0   , 0   , 0   , 0.42, 0   , 0   , 0   ],
+               [0   , 0.36, 1.49, 0.86, 1.31, 0.34, 1.39, 0.69, 0.91, 0.74, 1.32, 0.53, 0   , 0   , 0   , 0   , 0   ],
+               [0.37, 0.48, 0.68, 0.42, 0.41, 0.56, 0.68, 0.42, 0.41, 0.2 , 0.79, 0   , 0   , 0   , 0   , 0   , 0   ],
+               [0.47, 0.31, 0.5 , 0.15, 0.52, 0.3 , 0.5 , 0.15, 0.52, 0.22, 0   , 0   , 0   , 0   , 0   , 0   , 0   ],
+               [0   , 0.28, 0.18, 0.32, 0.37, 0.29, 0.18, 0.32, 0.37, 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   ],
+               [0   , 0.78, 1.39, 0.69, 0.91, 0.83, 1.29, 0.51, 0.51, 0.63, 1.25, 0.52, 0.91, 0.96, 0   , 0   , 0   ],
+               [0   , 0.56, 0.68, 0.42, 0.41, 0.64, 0.68, 0.42, 0.41, 0.73, 0.94, 0.42, 0.41, 0   , 0   , 0   , 0   ],
+               [0.39, 0.3 , 0.5 , 0.15, 0.52, 0.29, 0.5 , 0.15, 0.52, 0.28, 0.45, 0.28, 0.52, 0   , 0   , 0   , 0   ],
+               [0   , 0.29, 0.18, 0.32, 0.37, 0.29, 0.18, 0.32, 0.37, 0   , 0.18, 0.33, 0.37, 0   , 0   , 0   , 0   ],
+               [0.76, 0.47, 1.25, 0.52, 0.91, 0.38, 1.25, 0.52, 0.91, 0.75, 1.2 , 0.52, 1.31, 0.4 , 2.5 , 0.52, 1.31],
+               [0   , 0   , 0.51, 0   , 0   , 0   , 0.94, 0.42, 0.41, 0.81, 1.19, 0.41, 0.41, 0.81, 1.19, 0.41, 0.41],
+               [0.31, 0.25, 0   , 0.39, 0   , 0.28, 0.45, 0.28, 0.52, 0.27, 0.4 , 0.4 , 0.52, 0.27, 0.4 , 0.4 , 0.52],
+               [0   , 0   , 0   , 0   , 0   , 0.29, 0.18, 0.33, 0.37, 0.28, 0.18, 0.33, 0.37, 0.28, 0.18, 0.33, 0.37],
+               [0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0.23, 2.5 , 0.52, 1.31, 0.94, 3.8 , 0.52, 1.31],
+               [0   , 0.81, 0   , 0   , 0   , 0.81, 0   , 0   , 0   , 0.81, 1.19, 0.41, 0.41, 0.81, 1.19, 0.41, 0.41],
+               [0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0.27, 0.4 , 0.4 , 0.52, 0.27, 0.4 , 0.4 , 0.52],
+               [0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0.28, 0.18, 0.33, 0.37, 0.28, 0.18, 0.33, 0.37]])
+SS *= Sscale
+
 # Connectivity matrix layertype X layertype
-C = np.array([[0.656, 0.356, 0.093, 0.068, 0.4644, 0.148, 0, 0, 0, 0.148, 0, 0, 0, 0.148, 0, 0, 0],
-              [0, 0.16, 0.395, 0.182, 0.105, 0.016, 0.083, 0.083, 0.083, 0.083, 0.081, 0.102, 0, 0, 0, 0, 0],
-              [0.024, 0.411, 0.451, 0.03, 0.22, 0.05, 0.05, 0.05, 0.05, 0.07, 0.073, 0, 0, 0, 0, 0, 0],
-              [0.279, 0.424, 0.857, 0.082, 0.77, 0.05, 0.05, 0.05, 0.05, 0.021, 0, 0, 0, 0, 0, 0, 0],
-              [0, 0.087, 0.02, 0.625, 0.028, 0.05, 0.05, 0.05, 0.05, 0, 0, 0, 0, 0, 0, 0, 0],
-              [0, 0.14, 0.100, 0.1, 0.1, 0.243, 0.43, 0.571, 0.571, 0.104, 0.101, 0.128, 0.05, 0.032, 0, 0, 0],
-              [0, 0.25, 0.050, 0.05, 0.05, 0.437, 0.451, 0.03, 0.22, 0.088, 0.091, 0.03, 0.03, 0, 0, 0, 0],
-              [0.241, 0.25, 0.050, 0.05, 0.05, 0.351, 0.857, 0.082, 0.77, 0.026, 0.03, 0, 0.03, 0, 0, 0, 0],
-              [0, 0.25, 0.050, 0.05, 0.05, 0.351, 0.02, 0.625, 0.028, 0, 0.03, 0.03, 0.03, 0, 0, 0, 0],
-              [0.017, 0.021, 0.05, 0.05, 0.05, 0.007, 0.05, 0.05, 0.05, 0.116, 0.083, 0.063, 0.105, 0.047, 0.03, 0.03, 0.03],
-              [0, 0, 0.102, 0, 0, 0, 0.034, 0.03, 0.03, 0.455, 0.361, 0.03, 0.22, 0.03, 0.01, 0.01, 0.01],
-              [0.203, 0.169, 0, 0.017, 0, 0.056, 0.03, 0.006, 0.03, 0.317, 0.857, 0.04, 0.77, 0.03, 0.01, 0.01, 0.01],
-              [0, 0, 0, 0, 0, 0.03, 0.03, 0.03, 0.03, 0.125, 0.02, 0.625, 0.02, 0.03, 0.01, 0.01, 0.01],
-              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.012, 0.01, 0.01, 0.01, 0.026, 0.145, 0.1, 0.1],
-              [0, 0.1, 0, 0, 0, 0.1, 0, 0, 0, 0.1, 0.03, 0.03, 0.03, 0.1, 0.08, 0.1, 0.08],
-              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.03, 0.03, 0.03, 0.03, 0.1, 0.05, 0.05, 0.05],
-              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.03, 0.03, 0.03, 0.03, 0.1, 0.05, 0.05, 0.03]])
+C = np.array([[0.656, 0.356, 0.093, 0.068, 0.4644, 0.148, 0    , 0    , 0    , 0.148, 0    , 0    , 0    , 0.148, 0    , 0    , 0    ],
+              [0    , 0.16 , 0.395, 0.182, 0.105 , 0.016, 0.083, 0.083, 0.083, 0.083, 0.081, 0.102, 0    , 0    , 0    , 0    , 0    ],
+              [0.024, 0.411, 0.451, 0.03 , 0.22  , 0.05 , 0.05 , 0.05 , 0.05 , 0.07 , 0.073, 0    , 0    , 0    , 0    , 0    , 0    ],
+              [0.279, 0.424, 0.857, 0.082, 0.77  , 0.05 , 0.05 , 0.05 , 0.05 , 0.021, 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
+              [0    , 0.087, 0.02 , 0.625, 0.028 , 0.05 , 0.05 , 0.05 , 0.05 , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
+              [0    , 0.14 , 0.100, 0.1  , 0.1   , 0.243, 0.43 , 0.571, 0.571, 0.104, 0.101, 0.128, 0.05 , 0.032, 0    , 0    , 0    ],
+              [0    , 0.25 , 0.050, 0.05 , 0.05  , 0.437, 0.451, 0.03 , 0.22 , 0.088, 0.091, 0.03 , 0.03 , 0    , 0    , 0    , 0    ],
+              [0.241, 0.25 , 0.050, 0.05 , 0.05  , 0.351, 0.857, 0.082, 0.77 , 0.026, 0.03 , 0    , 0.03 , 0    , 0    , 0    , 0    ],
+              [0    , 0.25 , 0.050, 0.05 , 0.05  , 0.351, 0.02 , 0.625, 0.028, 0    , 0.03 , 0.03 , 0.03 , 0    , 0    , 0    , 0    ],
+              [0.017, 0.021, 0.05 , 0.05 , 0.05  , 0.007, 0.05 , 0.05 , 0.05 , 0.116, 0.083, 0.063, 0.105, 0.047, 0.03 , 0.03 , 0.03 ],
+              [0    , 0    , 0.102, 0    , 0     , 0    , 0.034, 0.03 , 0.03 , 0.455, 0.361, 0.03 , 0.22 , 0.03 , 0.01 , 0.01 , 0.01 ],
+              [0.203, 0.169, 0    , 0.017, 0     , 0.056, 0.03 , 0.006, 0.03 , 0.317, 0.857, 0.04 , 0.77 , 0.03 , 0.01 , 0.01 , 0.01 ],
+              [0    , 0    , 0    , 0    , 0     , 0.03 , 0.03 , 0.03 , 0.03 , 0.125, 0.02 , 0.625, 0.02 , 0.03 , 0.01 , 0.01 , 0.01 ],
+              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.012, 0.01 , 0.01 , 0.01 , 0.026, 0.145, 0.1  , 0.1  ],
+              [0    , 0.1  , 0    , 0    , 0     , 0.1  , 0    , 0    , 0    , 0.1  , 0.03 , 0.03 , 0.03 , 0.1  , 0.08 , 0.1  , 0.08 ],
+              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.03 , 0.03 , 0.03 , 0.03 , 0.1  , 0.05 , 0.05 , 0.05 ],
+              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.03 , 0.03 , 0.03 , 0.03 , 0.1  , 0.05 , 0.05 , 0.03 ]])
 C *= Kscale
 
-# Populations
-network.addpop('glif_psc', int(776*Nscale), CELLS['L1_Htr3a'], pos_ex, label="I", nrec=int(Rscale* 776))
-
-network.addpop('glif_psc', int(47386*Nscale), CELLS['L23_E'], pos_ex, label="E", nrec=int(Rscale*47386))
-network.addpop('glif_psc', int(3876*Nscale), CELLS['L23_Pvalb'], pos_ex, label="I", nrec=int(Rscale*3876))
-network.addpop('glif_psc', int(2807*Nscale), CELLS['L23_Sst'], pos_ex, label="I", nrec=int(Rscale*2807))
-network.addpop('glif_psc', int(6683*Nscale), CELLS['L23_Htr3a'], pos_ex, label="I", nrec=int(Rscale*6683))
-
-network.addpop('glif_psc', int(70387*Nscale), CELLS['L4_E'], pos_ex, label="E", nrec=int(Rscale*70387))
-network.addpop('glif_psc', int(9502*Nscale), CELLS['L4_Pvalb'], pos_ex, label="I", nrec=int(Rscale*9502))
-network.addpop('glif_psc', int(5455*Nscale), CELLS['L4_Sst'], pos_ex, label="I", nrec=int(Rscale*5455))
-network.addpop('glif_psc', int(2640*Nscale), CELLS['L4_Htr3a'], pos_ex, label="I", nrec=int(Rscale*2640))
-
-network.addpop('glif_psc', int(20740*Nscale), CELLS['L5_E'], pos_ex, label="E", nrec=int(Rscale*20740))
-network.addpop('glif_psc', int(2186*Nscale), CELLS['L5_Pvalb'], pos_ex, label="I", nrec=int(Rscale*2186))
-network.addpop('glif_psc', int(1958*Nscale), CELLS['L5_Sst'], pos_ex, label="I", nrec=int(Rscale*1958))
-network.addpop('glif_psc', int(410*Nscale), CELLS['L5_Htr3a'], pos_ex, label="I", nrec=int(Rscale*410))
-
-network.addpop('glif_psc', int(19839*Nscale), CELLS['L6_E'], pos_ex, label="E", nrec=int(Rscale*19839))
-network.addpop('glif_psc', int(1869*Nscale), CELLS['L6_Pvalb'], pos_ex, label="I", nrec=int(Rscale*1869))
-network.addpop('glif_psc', int(1869*Nscale), CELLS['L6_Sst'], pos_ex, label="I", nrec=int(Rscale*1869))
-network.addpop('glif_psc', int(325*Nscale), CELLS['L6_Htr3a'], pos_ex, label="I", nrec=int(Rscale*325))
+##L1 | L23e, i | L4e,i | L5e,i | L6e,i
+ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
 
 # # add stimulation
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=0) # to excitatory population
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=1) # to inhibitory population
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=2)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=3)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=4) # to excitatory population
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=5) # to inhibitory population
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=6)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=7)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=8)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=9)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=10)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=11)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=12)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=13)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=14)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=15)
-network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rate}, target=16)
-
-# ## Add populations to the network
-# network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
-# network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
-
-# network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
-# network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
-
-# network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
-# network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
-
-# network.addpop('glif_psc', 400, [neuron_params, np2, np3], pos_ex, label="E", nrec=400)
-# network.addpop('glif_psc', 100, [neuron_params, np2, np3], pos_in, label="I", nrec=100)
-
-# network.addpop('glif_psc', params['N'][0], [neuron_params, np2, np3], pos_ex, label="E", nrec=800)
-# network.addpop('glif_psc', params['N'][1], [neuron_params, np2, np3], pos_in, label="I", nrec=200)
-
-# ## Define connectivity matrix
-# conn_matrix = np.array([[0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
-#                         [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1]])
-# syn_matrix = np.array([["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"],
-#                        ["excitatory", "inhibitory", "excitatory", "inhibitory","excitatory", "inhibitory", "excitatory", "inhibitory", "excitatory", "inhibitory"]])
+for i in range(len(ext_rates)):
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=i)
 
 ## Connect all populations to each other according to the
 ## connectivity matrix and synaptic specifications
-network.connect_all(C, S)
+print("Connecting network...")
+network.connect_all(C, S, SS)
+print("Done! Starting simulation...")
 
 ## simulate
-print("Starting simulation...")
 network.simulate(params['sim_time'])
 print("Done! Fetching data...")
 
@@ -303,7 +166,7 @@ print("Done! Graphing spikes...")
 
 ## Define colors used in the raster plot per neuron population based on label
 label = network.get_labels()
-colors = ["b" if l == "E" else "r" for l in label]
+colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
 
 ## Plot spike data
 raster(spikes, params['rec_start'], params['rec_stop'], colors)
@@ -311,7 +174,7 @@ plt.show()
 
 ## Display the average firing rate in Hz
 rate(spikes, params['rec_start'], params['rec_stop'])
-print("Done! Estimating LFPs per layer...")
+# print("Done! Estimating LFPs per layer...")
 
 times = np.unique(mmdata[0]["times"])
 
@@ -320,13 +183,13 @@ times = np.unique(mmdata[0]["times"])
 lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times, label[0])
 print("Layer 1 finished")
 lfp_tc_l2 = approximate_lfp_timecourse(mmdata[1:5], times, label[1:5])
-print("Layer 2 finished")
+print("Layer 2/3 finished")
 lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times, label[5:9])
-print("Layer 3 finished")
-lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times, label[9:13])
 print("Layer 4 finished")
+lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times, label[9:13])
+print("Layer 5 finished")
 lfp_tc_l5 = approximate_lfp_timecourse(mmdata[13:17], times, label[13:17])
-print("Layer 5 finished, plotting...")
+print("Layer 6 finished, plotting...")
 
 ## Correct for data loss during lfp approximation 
 ## (6ms due to methodological reasons, see approximation function)
@@ -336,15 +199,21 @@ t = t.reshape(t.shape[0],)
 times = mmdata[0]["times"][t]
 
 ## plot the timecourse in the recorded time window
+plt.figure()
 plt.plot(t, lfp_tc_l1)
 plt.plot(t, lfp_tc_l2)
 plt.plot(t, lfp_tc_l3)
 plt.plot(t, lfp_tc_l4)
 plt.plot(t, lfp_tc_l5)
-plt.show
+plt.show()
 print("All done!")
 
+temp = np.vstack([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
+
+plt.figure()
+plt.imshow(temp, aspect="auto")
+plt.show()
+
 newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
-sum([38, 2369, 193, 140, 334, 3519, 475, 272, 132, 1037, 109, 97, 20, 991, 93, 93, 16])
 
 #icsd.CSD(lfp_tc)

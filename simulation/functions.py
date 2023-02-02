@@ -18,7 +18,7 @@ class Network:
         self.rec_stop = rec_stop
         self.resolution = resolution
 
-    def addpop(self, neuron_type, num_neurons, neuron_params, neuron_positions, label, 
+    def addpop(self, neuron_type, num_neurons, neuron_params, label, 
                record_from_pop=True, nrec=0.):
         """
         Adds a population to the network with given parameters
@@ -31,8 +31,6 @@ class Network:
             number of neurons in the specified population
         neuron_params : dictionary or list of dictionaries
             parameters for the population. Randomly sampled for each neuron if list.
-        neuron_positions : nest spatial data
-            nest spatial data
         label : string
             "E" for excitatory population, "I" for inhibitory population.
         record_from_pop : boolean, optional
@@ -55,14 +53,14 @@ class Network:
         self.__nrec.append(nrec)
         
         ## Create the neuronal population
-        newpop = nest.Create(neuron_type, num_neurons, neuron_params, positions=neuron_positions)
+        newpop = nest.Create(neuron_type, num_neurons, neuron_params)
         ## If record_from_pop is true, also connect the spike recorder and multimeter to it
         if record_from_pop:
             ## Create recording devices
             sr = nest.Create("spike_recorder")
             mm = nest.Create("multimeter",
                              params={"interval": self.resolution,
-                             "record_from": ["V_m", "I_syn"]})
+                             "record_from": ["I_syn"]})
             
             ## Set start/stop times
             sr.start = self.rec_start
@@ -103,7 +101,7 @@ class Network:
         """
         nest.Connect(popone, poptwo, conn_spec=conn_specs, syn_spec=syn_specs)
     
-    def connect_all(self, conn_specs, syn_specs):
+    def connect_all(self, conn_specs, synapse_type, syn_specs):
         """
         Connect a vector containing populations with each other with given
         connectivity and synaptic specifications.
@@ -122,12 +120,34 @@ class Network:
         """
         r = list(range(len(self.__populations)))
         R = itertools.product(r,r)
+        
         for x,y in R:
+            #print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
+            if synapse_type[x,y] == "E":
+                receptor_type = 1
+            else:
+                receptor_type = 2
+            ## Draw weights
+
+            w_min = 0.0
+            w_max = np.Inf
+            weight = nest.math.redraw(nest.random.normal(
+                mean = syn_specs[x,y],
+                std=max(abs(syn_specs[x,y]*0.1), 1e-10)),
+                min=w_min,
+                max=w_max)
+            delay = nest.math.redraw(nest.random.normal(
+                mean = 1.5,
+                std=abs(1.5*0.1)),
+                min=nest.resolution - 0.5 * nest.resolution,
+                max=np.Inf)
+            
+            
             nest.Connect(self.__populations[x],
                          self.__populations[y],
                          conn_spec = {'rule': 'fixed_indegree', 
-                                      'indegree': int(conn_specs[y, x] * len(self.__populations[x]))},
-                         syn_spec = syn_specs[y, x])
+                                      'indegree': int(conn_specs[x, y] * len(self.__populations[x]))},
+                         syn_spec = {"weight": weight, "delay": delay, "receptor_type": receptor_type})
         
                 
 
@@ -248,7 +268,6 @@ class Network:
             # times = []
             # self.min = min(self.IDs)
             # self.max = max(self.IDs)
-            print(mn, mx)
             
             ## Get sender IDs and times (in ms)
             self.senders = self.spike_times[0]['events']['senders']
@@ -303,8 +322,6 @@ def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
     for i in spikes:
         nrec_lst.append(len(i))
         
-    print(nrec_lst)
-
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(5, 1)
 
@@ -327,12 +344,12 @@ def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
                 marker='o',
                 color=colors[j],
                 markersize=1)
-
+    plt.gca().invert_yaxis()
     spikes_hist = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
     ax2 = ax2.hist(spikes_hist,
                    range=(rec_start,rec_stop),
                    bins=int(rec_stop - rec_start))
-
+    
     plt.tight_layout(pad=1)
 
     plt.savefig('raster.png')
@@ -361,7 +378,6 @@ def rate(spikes, rec_start, rec_stop):
     nrec_total = 0
     for i in spikes:
         nrec_total += len(i)
-    print(nrec_total)
 
     time_diff = (rec_stop - rec_start)/1000.
     average_firing_rate = (len(spikes_total)
@@ -443,11 +459,8 @@ def approximate_lfp_timecourse(data, times, label):
         ## individual neuronal population
         if l == "E":
             cex += currentsum
-        elif l == "I":
-            cin += currentsum
         else:
-            raise Exception("Check if you labelled the neuronal populations correctly (E for excitatory, I for inhibitory)")
-        #mmall.append(mmdata)
+            cin += currentsum
     
     
     ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
