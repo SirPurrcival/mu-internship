@@ -224,6 +224,18 @@ class Network:
 
         """
         return self.__labels
+    
+    def get_nrec(self):
+        """
+        Returns the number of neurons recorded from each population in the order they were created.
+
+        Returns
+        -------
+        __nrec : list
+            List of integers
+
+        """
+        return self.__nrec
 
     def get_data(self):
         """
@@ -289,7 +301,7 @@ class Network:
         return mmlist, self.data
 
 # Helper functions
-def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
+def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
     """
     Draws the scatterplot for the spiketimes of each neuronal population as well as
     a histogram of spiketimes over all neurons.
@@ -317,7 +329,7 @@ def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
     # An array containing all the arrays for each neuron
     spikes_total = [element for sublist in spikes for element in sublist]
     nrec_lst = []
-    
+
     ## Get the size of each population
     for i in spikes:
         nrec_lst.append(len(i))
@@ -330,9 +342,11 @@ def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
 
     ax1.set_xlim([rec_start, rec_stop])
     ax2.set_xlim([rec_start, rec_stop])
-
+    
+    ax1.set_ylim([0, sum(nrec_lst)])
     ax1.set_ylabel('Neuron ID')
-
+    ax1.invert_yaxis()
+    
     ax2.set_ylabel('Rate [Hz]')
     ax2.set_xlabel('Time [ms]')
     
@@ -344,11 +358,34 @@ def raster(spikes, rec_start, rec_stop, colors, figsize=(9, 5)):
                 marker='o',
                 color=colors[j],
                 markersize=1)
-    plt.gca().invert_yaxis()
+    
     spikes_hist = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
     ax2 = ax2.hist(spikes_hist,
                    range=(rec_start,rec_stop),
                    bins=int(rec_stop - rec_start))
+    
+    ## Add y-tick labels indicating layers
+    nrec = np.cumsum(nrec)
+    ticks = dict()
+    layer = ["Layer 1", "Layer 2/3", "Layer 4", "Layer 5", "Layer 6"]
+    l = 0
+    for e in range(len(nrec)):
+        if e == 0:
+            ticks[nrec[e]] = layer[l]
+            l += 1
+        elif label[e] == "E":
+            ## Display the label in the middle of the excitatory layers instead of
+            ## The beginning or end
+            ticks[int((nrec[e]+nrec[e-1])/2)] = layer[l]
+            l += 1
+            
+
+    ax1.set_yticks(list(ticks.keys()))
+    labels = [ticks[t] for i,t in enumerate(list(ticks.keys()))]
+    ## or 
+    # labels = [dic.get(t, ticks[i]) for i,t in enumerate(ticks)]
+    
+    ax1.set_yticklabels(labels)
     
     plt.tight_layout(pad=1)
 

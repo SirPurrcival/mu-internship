@@ -10,7 +10,8 @@ from functions import Network, raster, rate, approximate_lfp_timecourse
 
 ## Set nest variables
 nest.ResetKernel()
-nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
+#nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
+nest.local_num_threads = 4
 nest.print_time = False
 resolution = 0.1
 nest.resolution = resolution
@@ -42,13 +43,13 @@ params = {
 ## Specify synapse properties ##
 ################################
 
-delay = 1.5
-# excitatory input to receptor_type 1
-nest.CopyModel("static_synapse", "E",
-               {"weight": params['J'], "delay": delay, "receptor_type": 1})
-# inhbitiory input to receptor_type 2 (makes weight automatically postive if negative weight is supplied)
-nest.CopyModel("static_synapse", "I",
-               {"weight": params['J']*params['g'], "delay": delay, "receptor_type": 2})
+# delay = 1.5
+# # excitatory input to receptor_type 1
+# nest.CopyModel("static_synapse", "E",
+#                {"weight": params['J'], "delay": delay, "receptor_type": 1})
+# # inhbitiory input to receptor_type 2 (makes weight automatically postive if negative weight is supplied)
+# nest.CopyModel("static_synapse", "I",
+#                {"weight": params['J']*params['g'], "delay": delay, "receptor_type": 2})
 
 
 
@@ -66,7 +67,7 @@ num_layertypes = 17
 num_parameters = 14
 
 Nscale = 0.1
-Kscale = 0.2
+Kscale = 0.22
 Sscale = 1
 Rscale = Nscale * 0.5
 
@@ -144,7 +145,15 @@ C = np.array([[0.656, 0.356, 0.093, 0.068, 0.4644, 0.148, 0    , 0    , 0    , 0
 C *= Kscale
 
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
-ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
+#ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
+ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
+# relative_weight = [1,                                                                                       ## Layer 1
+#                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
+#                     1, 9502/(9502+5455+2640), 5455/(9502+5455+2640), 2640/(9502+5455+2640),                  ## Layer 4
+#                     1, 2186/(2186+1958+410), 1958/(2186+1958+410), 410/(2186+1958+410),                      ## Layer 5
+#                     1, 1869/(1869+1869+325), 1869/(1869+1869+325), 325/(1869+1869+325)
+#                     ]
+# ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * relative_weight * 8 * Kscale
 
 # # add stimulation
 for i in range(len(ext_rates)):
@@ -169,12 +178,17 @@ label = network.get_labels()
 colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
 
 ## Plot spike data
-raster(spikes, params['rec_start'], params['rec_stop'], colors)
+raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label)
 plt.show()
 
 ## Display the average firing rate in Hz
 rate(spikes, params['rec_start'], params['rec_stop'])
-# print("Done! Estimating LFPs per layer...")
+print("Done! Estimating LFPs per layer...")
+
+#################################
+## LFP Approximation procedure ##
+#################################
+
 
 times = np.unique(mmdata[0]["times"])
 
@@ -197,12 +211,13 @@ t = np.argwhere(times - min(times) >= 6)
 t = t.reshape(t.shape[0],)
 
 ## plot the timecourse in the recorded time window
-plt.figure()
-plt.plot(t, lfp_tc_l1)
-plt.plot(t, lfp_tc_l2)
-plt.plot(t, lfp_tc_l3)
-plt.plot(t, lfp_tc_l4)
-plt.plot(t, lfp_tc_l5)
+fig, ax = plt.subplots()
+ax.plot(t, lfp_tc_l1, label = "LFP Layer 1")
+ax.plot(t, lfp_tc_l2, label = "LFP Layer 2/3")
+ax.plot(t, lfp_tc_l3, label = "LFP Layer 4")
+ax.plot(t, lfp_tc_l4, label = "LFP Layer 5")
+ax.plot(t, lfp_tc_l5, label = "LFP Layer 6")
+legend = ax.legend(loc='right', bbox_to_anchor=(1.35, 0.7), shadow=False, ncol=1)
 plt.show()
 print("All done!")
 
