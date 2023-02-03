@@ -65,8 +65,8 @@ num_types  = 4
 num_layertypes = 17
 num_parameters = 14
 
-Nscale = 0.05
-Kscale = 0.28
+Nscale = 0.1
+Kscale = 0.2
 Sscale = 1
 Rscale = Nscale * 0.5
 
@@ -195,8 +195,6 @@ print("Layer 6 finished, plotting...")
 ## (6ms due to methodological reasons, see approximation function)
 t = np.argwhere(times - min(times) >= 6)
 t = t.reshape(t.shape[0],)
-
-times = mmdata[0]["times"][t]
 
 ## plot the timecourse in the recorded time window
 plt.figure()

@@ -411,7 +411,6 @@ def approximate_lfp_timecourse(data, times, label):
         for the current layer
 
     """
-    
     ## calculate a delay of 6ms depending on resolution
     t = np.argwhere(times - min(times) >= 6)
     t = t.reshape(t.shape[0],)
@@ -448,7 +447,7 @@ def approximate_lfp_timecourse(data, times, label):
                 for n in mmdata:
                     tmpsum += n[i]
                 currentsum[i-min(t)] = tmpsum
-        elif l == "I":
+        else:
             for i in range(max(t)-min(t)+1):
                 tmpsum = 0
                 for n in mmdata:
@@ -464,7 +463,6 @@ def approximate_lfp_timecourse(data, times, label):
     
     
     ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
-    
     normalized = normalize(cex - 1.65*cin)
     
     # for x in mmall:
