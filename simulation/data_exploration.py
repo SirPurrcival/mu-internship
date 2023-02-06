@@ -75,5 +75,7 @@ pop_names = ['e5Rbp4',
 df = pd.DataFrame(nya)
 for i in range(len(df[1])):
     df[1][i] = pop_names[df[1][i]]
+    
+df = df.set_axis(["Synaptic strength", "Population name", "Number of occurences"], axis=1)
 
 
