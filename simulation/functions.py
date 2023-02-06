@@ -151,7 +151,7 @@ class Network:
         
                 
 
-    def add_stimulation(self, source, target):
+    def add_stimulation(self, source, target, weight):
         """
         Adds excitatory stimulation of the specified type to the specified target
         population
@@ -162,6 +162,8 @@ class Network:
             Contains the type of stimulation source and the stimulation rate.
         target : int
             Specifies which population to connect to (index in the list of populations)
+        weight: float
+            Specifies the synaptic weight of the connection
 
         Returns
         -------
@@ -171,7 +173,7 @@ class Network:
         stimulus = nest.Create(source['type'])
         stimulus.rate = source['rate']
         nest.Connect(stimulus, self.__populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
-                                                                                                'weight': 1.})
+                                                                                                'weight': weight})
     
     def get_pops(self):
         """

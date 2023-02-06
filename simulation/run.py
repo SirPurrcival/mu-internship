@@ -66,8 +66,8 @@ num_types  = 4
 num_layertypes = 17
 num_parameters = 14
 
-Nscale = 0.1
-Kscale = 0.22
+Nscale = 0.05
+Kscale = 1
 Sscale = 1
 Rscale = Nscale * 0.5
 
@@ -147,6 +147,7 @@ C *= Kscale
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
 #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
 ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
+stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e-13, 7.5e-26, 3.6, 0.8, 4.1, 4e-18, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
 # relative_weight = [1,                                                                                       ## Layer 1
 #                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
 #                     1, 9502/(9502+5455+2640), 5455/(9502+5455+2640), 2640/(9502+5455+2640),                  ## Layer 4
@@ -157,7 +158,7 @@ ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000
 
 # # add stimulation
 for i in range(len(ext_rates)):
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=i)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=i, weight=stim_weights[i])
 
 ## Connect all populations to each other according to the
 ## connectivity matrix and synaptic specifications
