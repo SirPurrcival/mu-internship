@@ -529,6 +529,6 @@ def normalize(data):
     mean = np.mean(data)
     ms = np.subtract(data,mean)
     ## https://stackoverflow.com/questions/1735025/how-to-normalize-a-numpy-array-to-within-a-certain-range
-    normalized = 2.*(ms - np.min(ms))/np.ptp(ms)-1
+    normalized = (ms - np.min(ms))/np.ptp(ms)
     
     return normalized

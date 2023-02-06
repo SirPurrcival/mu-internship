@@ -18,7 +18,7 @@ import quantities as pq
 #prepare lfp data for use, by changing the units to SI and append quantities,
 #along with electrode geometry and conductivities
 lfp_data = newlst * 1E-6 * pq.V        # [uV] -> [V]
-z_data = np.linspace(100E-6, 500E-6, 5) * pq.m  # [m]
+z_data = np.linspace(100E-6, 5 * 150E-6, 5) * pq.m  # [m]
 diam = 500E-6 * pq.m                              # [m]
 h = 100E-6 * pq.m                                 # [m]
 sigma = 0.3 * pq.S / pq.m                         # [S/m] or [1/(ohm*m)]

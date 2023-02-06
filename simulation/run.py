@@ -33,8 +33,8 @@ params = {
     'J':    0.1,                        # postsynaptic amplitude in mV
     'n_rec_ex':  800,                   # excitatory neurons to be recorded from
     'n_rec_in':  200,                   # inhibitory neurons to be recorded from
-    'rec_start': 600.,                  # start point for data recording
-    'rec_stop':  800.,                  # end points for data recording
+    'rec_start': 500.,                  # start point for data recording
+    'rec_stop':  900.,                  # end points for data recording
     'sim_time': 1000.
     }
 
@@ -67,7 +67,7 @@ num_layertypes = 17
 num_parameters = 14
 
 Nscale = 0.05
-Kscale = 1
+Kscale = .13
 Sscale = 1
 Rscale = Nscale * 0.5
 
@@ -147,7 +147,7 @@ C *= Kscale
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
 #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
 ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
-stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e-13, 7.5e-26, 3.6, 0.8, 4.1, 4e-18, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
+stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e-8, 7.5e-26, 3.6, 0.8, 4.1, 4e-18, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
 # relative_weight = [1,                                                                                       ## Layer 1
 #                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
 #                     1, 9502/(9502+5455+2640), 5455/(9502+5455+2640), 2640/(9502+5455+2640),                  ## Layer 4
@@ -190,7 +190,6 @@ print("Done! Estimating LFPs per layer...")
 ## LFP Approximation procedure ##
 #################################
 
-
 times = np.unique(mmdata[0]["times"])
 
 ## Approximate the lfp timecourse per layer
@@ -213,12 +212,12 @@ t = t.reshape(t.shape[0],)
 
 ## plot the timecourse in the recorded time window
 fig, ax = plt.subplots()
-ax.plot(t, lfp_tc_l1, label = "LFP Layer 1")
-ax.plot(t, lfp_tc_l2, label = "LFP Layer 2/3")
-ax.plot(t, lfp_tc_l3, label = "LFP Layer 4")
-ax.plot(t, lfp_tc_l4, label = "LFP Layer 5")
-ax.plot(t, lfp_tc_l5, label = "LFP Layer 6")
-legend = ax.legend(loc='right', bbox_to_anchor=(1.35, 0.7), shadow=False, ncol=1)
+ax.plot(t, lfp_tc_l1, label = "Layer 1")
+ax.plot(t, lfp_tc_l2, label = "Layer 2/3")
+ax.plot(t, lfp_tc_l3, label = "Layer 4")
+ax.plot(t, lfp_tc_l4, label = "Layer 5")
+ax.plot(t, lfp_tc_l5, label = "Layer 6")
+legend = ax.legend(loc='right', bbox_to_anchor=(1.3, 0.7), shadow=False, ncol=1)
 plt.show()
 print("All done!")
 
@@ -229,5 +228,7 @@ plt.imshow(temp, aspect="auto")
 plt.show()
 
 newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
+
+print(f"Standard deviations:\n{np.std(lfp_tc_l1)}\n{np.std(lfp_tc_l2)}\n{np.std(lfp_tc_l3)}\n{np.std(lfp_tc_l4)}\n{np.std(lfp_tc_l5)}")
 
 #icsd.CSD(lfp_tc)
