@@ -164,11 +164,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # cd .. && rm -rf PyNN-nest-dev && rm nest-dev.tar.gz
     pip install --no-binary :all: PyNN
 
-COPY --from=buildermaster /opt/nest /opt/nest
-COPY --from=buildermaster /opt/music-install /opt/music-install
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY . .
 
 EXPOSE 5000 8080
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+CMD ["/bin/bash"]

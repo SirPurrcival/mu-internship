@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
-from functions import Network, raster, rate, approximate_lfp_timecourse
+from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi, get_firing_rate, get_irregularity, get_synchrony
 #import icsd
 
 ## Set nest variables

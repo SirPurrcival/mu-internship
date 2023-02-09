@@ -535,3 +535,19 @@ def normalize(data):
     normalized = (ms - np.min(ms))/np.ptp(ms)
     
     return normalized
+
+def get_isi(spike_times):
+    all_isi = [np.diff(x) for x in spike_times]
+    return [element for sublist in all_isi for element in sublist]
+
+def get_synchrony():
+    pass
+
+def get_irregularity(spike_times):
+    isi = get_isi(spike_times)
+    mean_isi = np.mean(isi)
+    cv = np.std(isi) / mean_isi
+    return cv
+
+def get_firing_rate():
+    pass
