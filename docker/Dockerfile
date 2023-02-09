@@ -87,7 +87,7 @@ RUN wget https://github.com/INCF/MUSIC/archive/master.tar.gz && \
 RUN git clone https://github.com/nest/nest-simulator.git && \
   cd nest-simulator && \
   git checkout master && \
-  python3 -m pip install -r ./extras/nest-simulator-doc-requirements.txt && \
+  python3 -m pip install -r ./doc/requirements.txt && \
   cd .. && \
   mkdir nest-build && \
   ls -l && \
@@ -107,7 +107,7 @@ RUN git clone https://github.com/nest/nest-simulator.git && \
         -Dwith-music=/opt/music-install \
         ../nest-simulator && \
   make && \
-  make html && \
+#RUN make html && \
   make install
 
 ###############################################################################
