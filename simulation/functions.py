@@ -502,7 +502,10 @@ def approximate_lfp_timecourse(data, times, label):
     
     
     ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
-    normalized = normalize(cex - 1.65*cin)
+    
+    normalized = cex - 1.65*cin 
+    normalized = normalized - np.mean(normalized)
+    ## normalize(cex - 1.65*cin)
     
     # for x in mmall:
     #     for i in range(len(x)):
