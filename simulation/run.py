@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import nest
 from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi, get_firing_rate, get_irregularity, get_synchrony
 #import icsd
+import time
 
 ########################
 ## Set NEST Variables ##
@@ -46,8 +47,8 @@ label = ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E
 parameters = ['adapting_threshold', 'after_spike_currents', 'asc_amps', 'asc_decay', 'asc_init', 'C_m', 'E_L', 'g', 'spike_dependent_threshold', 't_ref', 'tau_syn', 'V_m', 'V_reset', 'V_th']
 
 ## Scaling
-Nscale = 0.05                 ## Scaling the number of neurons in
-Kscale = .13                 ## Scaling the number of connections 
+Nscale = 1.                 ## Scaling the number of neurons in
+Kscale = 1.                 ## Scaling the number of connections 
 Sscale = 1.                 ## Scaling the synaptic strength
 Rscale = Nscale * 0.2       ## Scaling the number of neurons we record from
 
@@ -55,8 +56,8 @@ ext_rate = 900*8 * Kscale   ## Noise rate (Nr. of noise inputs * Frequency * Sca
 
 ## Recording and simulation parameters
 params = {
-    'rec_start': 500.,                  # start point for data recording
-    'rec_stop':  900.,                  # end points for data recording
+    'rec_start': 600.,                  # start point for data recording
+    'rec_stop':  800.,                  # end points for data recording
     'sim_time': 1000.                   # Time the network is simulated in ms
     }
 
@@ -139,7 +140,7 @@ for i in range(len(layertypes)):
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
 ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
 #ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
-stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e0, 7.5e0, 3.6, 0.8, 4.1, 4e0, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
+stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e-24, 7.5e0, 3.6, 0.8, 4.1, 4e0, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
 # relative_weight = [1,                                                                                       ## Layer 1
 #                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
 #                     1, 9502/(9502+5455+2640), 5455/(9502+5455+2640), 2640/(9502+5455+2640),                  ## Layer 4
@@ -184,17 +185,37 @@ print("Done! Estimating LFPs per layer...")
 
 times = np.unique(mmdata[0]["times"])
 
+## append labels to data
+for i in range(len(mmdata)):
+    mmdata[i].update( {"label":label[i]})
+
 ## Approximate the lfp timecourse per layer
-lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times, label[0])
+lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times)
 print("Layer 1 finished")
-lfp_tc_l2 = approximate_lfp_timecourse(mmdata[1:5], times, label[1:5])
+lfp_tc_l2 = approximate_lfp_timecourse(mmdata[1:5], times)
 print("Layer 2/3 finished")
-lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times, label[5:9])
+lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times)
 print("Layer 4 finished")
-lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times, label[9:13])
+lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times)
 print("Layer 5 finished")
-lfp_tc_l5 = approximate_lfp_timecourse(mmdata[13:17], times, label[13:17])
+lfp_tc_l5 = approximate_lfp_timecourse(mmdata[13:17], times)
 print("Layer 6 finished, plotting...")
+
+##################
+## Timing Stuff ##
+##################
+# get the start time
+st = time.time()
+
+## The stuff to time
+lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times)
+
+# get the end time
+et = time.time()
+
+# get the execution time
+elapsed_time = et - st
+print(elapsed_time)
 
 ## Correct for data loss during lfp approximation 
 ## (6ms due to methodological reasons, see approximation function)
@@ -208,6 +229,8 @@ ax.plot(t, lfp_tc_l2, label = "Layer 2/3")
 ax.plot(t, lfp_tc_l3, label = "Layer 4")
 ax.plot(t, lfp_tc_l4, label = "Layer 5")
 ax.plot(t, lfp_tc_l5, label = "Layer 6")
+plt.show()
+
 legend = ax.legend(loc='right', bbox_to_anchor=(1.3, 0.7), shadow=False, ncol=1)
 plt.show()
 plt.savefig('LFP_approximation.png')

@@ -167,7 +167,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      cd .. && rm -rf PyNN-nest-dev && rm nest-dev.tar.gz && \
     #pip install --no-binary :all: PyNN
      pip install numpy==1.23.1 && \
-     mkdir code
+     mkdir code && \
+     mkdir data
 
 COPY --from=buildermaster /opt/nest /opt/nest
 
@@ -179,3 +180,4 @@ COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+#ENTRYPOINT ["/bin/bash"]

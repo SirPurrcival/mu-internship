@@ -425,7 +425,7 @@ def rate(spikes, rec_start, rec_stop):
     print(f'Average firing rate: {average_firing_rate} Hz')
     
 
-def approximate_lfp_timecourse(data, times, label):
+def approximate_lfp_timecourse(data, times):
     """
     This function calculates the approximated lfp timecourse for the current layer using the
     methodology from Mazzoni et al. (2015). Amplitude depends on the depth and location
@@ -436,9 +436,7 @@ def approximate_lfp_timecourse(data, times, label):
     ----------
     data : list
         Should contain the 'events' dictionaries for each neuronal population
-        of the current layer
-    times: list
-        Contains the timesteps in miliseconds
+        of the current layer and a label entry indicating excitatory ("E") or otherwise
     label: list
         Contains the label of each neuronal population in data indicating
         whether they are excitatory or inhibitory
@@ -450,20 +448,23 @@ def approximate_lfp_timecourse(data, times, label):
         for the current layer
 
     """
-    ## calculate a delay of 6ms depending on resolution
-    t = np.argwhere(times - min(times) >= 6)
-    t = t.reshape(t.shape[0],)
+    ## We are using a delay of 6ms in the excitatory populations to calculate the LFP
+    ## (See the Mazzoni paper)
+    ## Get the positions for the data used in the excitatory populations. Dependent on resolution
+    
+    delay = np.argwhere(times - min(times) >= 6)
+    delay = delay.reshape(delay.shape[0],)    
     
     ## initialize arrays that will contain the sums of excitatory and inhibitory currents
-    cin = np.zeros((len(t),))
-    cex = np.zeros((len(t),))
+    cin = np.zeros((len(delay),))
+    cex = np.zeros((len(delay),))
     
     ## Go through all different neuronal populations of the current layer
     for d in range(len(data)):
         ## get the relevant data for the population
         senders = np.array(data[d]["senders"])
         I_syn = np.array(data[d]["I_syn"])
-        l = label[d]
+        l = data[d]["label"]
         
         ## neuronal populations always have sequential IDs upon creation
         ## so we just need the first and last ID of the current population
@@ -472,22 +473,19 @@ def approximate_lfp_timecourse(data, times, label):
         
         ## get a list containing the synaptic current
         ## recordings per neuron
-        mmdata = []
-        for s in range(mn, mx+1):
-            mmdata.append( I_syn[senders == s] )
-        
+        mmdata = [I_syn[senders == s] for s in list(range(mn, mx+1))]
         
         ## The currents are already sorted by time, just
         ## sum them up at each point in time and save them in an array
-        currentsum = np.zeros(len(t))
+        currentsum = np.zeros(len(delay))
         if l == "E":
-            for i in range(min(t), max(t)+1):
+            for i in range(min(delay), max(delay)+1):
                 tmpsum = 0
                 for n in mmdata:
                     tmpsum += n[i]
-                currentsum[i-min(t)] = tmpsum
+                currentsum[i-min(delay)] = tmpsum
         else:
-            for i in range(max(t)-min(t)+1):
+            for i in range(max(delay)-min(delay)+1):
                 tmpsum = 0
                 for n in mmdata:
                     tmpsum += n[i]
@@ -501,11 +499,10 @@ def approximate_lfp_timecourse(data, times, label):
             cin += currentsum
     
     
-    ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
-    
+    # Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
     normalized = cex - 1.65*cin 
     normalized = normalized - np.mean(normalized)
-    ## normalize(cex - 1.65*cin)
+    # normalize(cex - 1.65*cin)
     
     # for x in mmall:
     #     for i in range(len(x)):
@@ -537,13 +534,42 @@ def normalize(data):
     return normalized
 
 def get_isi(spike_times):
-    all_isi = [np.diff(x) for x in spike_times]
+    """
+    Calculates the interspike interval (isi) for all populations
+
+    Parameters
+    ----------
+    spike_times : list
+        A list containing the arrays of spike times for each population
+
+    Returns
+    -------
+    list
+        Returns a list of interspike intervalls
+
+    """
+    all_isi = [np.diff(x) for sublist in spike_times for x in sublist]
     return [element for sublist in all_isi for element in sublist]
 
 def get_synchrony():
     pass
 
 def get_irregularity(spike_times):
+    """
+    Calculates an irregularity measure based on Potjans & Diesmann (2014)
+    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3920768/
+
+    Parameters
+    ----------
+    spike_times : list
+        A list containing the arrays of spike times for each population
+
+    Returns
+    -------
+    cv : float
+        A measure of irregularity, bounded between 0 and 1, where 1 is the highest and 0 the lowest.
+
+    """
     isi = get_isi(spike_times)
     mean_isi = np.mean(isi)
     cv = np.std(isi) / mean_isi
