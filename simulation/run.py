@@ -1,79 +1,43 @@
-## install iCSD if needed:
-## pip install git+https://github.com/espenhgn/iCSD.git
+#!/usr/bin/python3
 
-## Import libraries
+######################
+## Import libraries ##
+######################
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
 from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi, get_firing_rate, get_irregularity, get_synchrony
 #import icsd
 
-## Set nest variables
+########################
+## Set NEST Variables ##
+########################
+
 nest.ResetKernel()
-#nest.SetKernelStatus({'local_num_threads': 4})  # Adapt if necessary
-nest.local_num_threads = 4
+nest.local_num_threads = 4 ## adapt if necessary
 nest.print_time = False
 resolution = 0.1
 nest.resolution = resolution
+
+nest.overwrite_files = True
+## Path relative to working directory
+#nest.data_path = ""
+## Some random prefix that is given to all files (i.e. the trial number)
+#nest.data_prefix = ""
 
 #######################################
 ## Set parameters for the simulation ##
 #######################################
 
 print("Begin setup")
-
 CELLS = np.load('cells.npy', allow_pickle=True).item()
 
-params = {
-    'N':    [800, 200],                 # number of neurons in network
-    'rho':  0.2,                        # fraction of inhibitory neurons
-    'eps':  0.1,                        # probability to establish a connections
-    'g':    4,                          # excitation-inhibition balance
-    'eta':  2,                          # relative external rate
-    'J':    0.1,                        # postsynaptic amplitude in mV
-    'n_rec_ex':  800,                   # excitatory neurons to be recorded from
-    'n_rec_in':  200,                   # inhibitory neurons to be recorded from
-    'rec_start': 500.,                  # start point for data recording
-    'rec_stop':  900.,                  # end points for data recording
-    'sim_time': 1000.
-    }
-
-
-################################
-## Specify synapse properties ##
-################################
-
-# delay = 1.5
-# # excitatory input to receptor_type 1
-# nest.CopyModel("static_synapse", "E",
-#                {"weight": params['J'], "delay": delay, "receptor_type": 1})
-# # inhbitiory input to receptor_type 2 (makes weight automatically postive if negative weight is supplied)
-# nest.CopyModel("static_synapse", "I",
-#                {"weight": params['J']*params['g'], "delay": delay, "receptor_type": 2})
-
-
-
-
-########################
-## Create the network ##
-########################
-
-network = Network(resolution, params['rec_start'], params['rec_stop'])
-
-# Count of overview
+## OVERVIEW
 num_layers = 5
 num_types  = 4
 num_layertypes = 17
 num_parameters = 14
 
-Nscale = 0.05
-Kscale = .13
-Sscale = 1
-Rscale = Nscale * 0.5
-
-ext_rate = 900*8 * Kscale
-
-# Overview
 layers = ['L1', 'L23', 'L4', 'L5', 'L6']
 types  = ['E',  'Pvalb', 'Htr3a', 'Sst']
 num_neurons = [776, 47386, 3876, 2807, 6683, 70387, 9502, 5455, 2640, 20740, 2186, 1958, 410, 19839, 1869, 1869, 325 ]
@@ -81,11 +45,48 @@ layertypes = ['L1_Htr3a', 'L23_E', 'L23_Pvalb', 'L23_Sst', 'L23_Htr3a' , 'L4_E',
 label = ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr']
 parameters = ['adapting_threshold', 'after_spike_currents', 'asc_amps', 'asc_decay', 'asc_init', 'C_m', 'E_L', 'g', 'spike_dependent_threshold', 't_ref', 'tau_syn', 'V_m', 'V_reset', 'V_th']
 
-# Populations
-print("Populating network...")
-for i in range(len(layertypes)):
-    network.addpop('glif_psc', int(num_neurons[i]*Nscale), CELLS[layertypes[i]], label=label[i], nrec=int(Rscale* num_neurons[i]))
+## Scaling
+Nscale = 0.05                 ## Scaling the number of neurons in
+Kscale = .13                 ## Scaling the number of connections 
+Sscale = 1.                 ## Scaling the synaptic strength
+Rscale = Nscale * 0.2       ## Scaling the number of neurons we record from
 
+ext_rate = 900*8 * Kscale   ## Noise rate (Nr. of noise inputs * Frequency * Scaling factor)
+
+## Recording and simulation parameters
+params = {
+    'rec_start': 500.,                  # start point for data recording
+    'rec_stop':  900.,                  # end points for data recording
+    'sim_time': 1000.                   # Time the network is simulated in ms
+    }
+
+################################################################
+## Specify connectivity in and between layers and populations ##
+################################################################
+
+# Connectivity matrix layertype X layertype
+C = np.array([[0.656, 0.356, 0.093, 0.068, 0.4644, 0.148, 0    , 0    , 0    , 0.148, 0    , 0    , 0    , 0.148, 0    , 0    , 0    ],
+              [0    , 0.16 , 0.395, 0.182, 0.105 , 0.016, 0.083, 0.083, 0.083, 0.083, 0.081, 0.102, 0    , 0    , 0    , 0    , 0    ],
+              [0.024, 0.411, 0.451, 0.03 , 0.22  , 0.05 , 0.05 , 0.05 , 0.05 , 0.07 , 0.073, 0    , 0    , 0    , 0    , 0    , 0    ],
+              [0.279, 0.424, 0.857, 0.082, 0.77  , 0.05 , 0.05 , 0.05 , 0.05 , 0.021, 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
+              [0    , 0.087, 0.02 , 0.625, 0.028 , 0.05 , 0.05 , 0.05 , 0.05 , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
+              [0    , 0.14 , 0.100, 0.1  , 0.1   , 0.243, 0.43 , 0.571, 0.571, 0.104, 0.101, 0.128, 0.05 , 0.032, 0    , 0    , 0    ],
+              [0    , 0.25 , 0.050, 0.05 , 0.05  , 0.437, 0.451, 0.03 , 0.22 , 0.088, 0.091, 0.03 , 0.03 , 0    , 0    , 0    , 0    ],
+              [0.241, 0.25 , 0.050, 0.05 , 0.05  , 0.351, 0.857, 0.082, 0.77 , 0.026, 0.03 , 0    , 0.03 , 0    , 0    , 0    , 0    ],
+              [0    , 0.25 , 0.050, 0.05 , 0.05  , 0.351, 0.02 , 0.625, 0.028, 0    , 0.03 , 0.03 , 0.03 , 0    , 0    , 0    , 0    ],
+              [0.017, 0.021, 0.05 , 0.05 , 0.05  , 0.007, 0.05 , 0.05 , 0.05 , 0.116, 0.083, 0.063, 0.105, 0.047, 0.03 , 0.03 , 0.03 ],
+              [0    , 0    , 0.102, 0    , 0     , 0    , 0.034, 0.03 , 0.03 , 0.455, 0.361, 0.03 , 0.22 , 0.03 , 0.01 , 0.01 , 0.01 ],
+              [0.203, 0.169, 0    , 0.017, 0     , 0.056, 0.03 , 0.006, 0.03 , 0.317, 0.857, 0.04 , 0.77 , 0.03 , 0.01 , 0.01 , 0.01 ],
+              [0    , 0    , 0    , 0    , 0     , 0.03 , 0.03 , 0.03 , 0.03 , 0.125, 0.02 , 0.625, 0.02 , 0.03 , 0.01 , 0.01 , 0.01 ],
+              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.012, 0.01 , 0.01 , 0.01 , 0.026, 0.145, 0.1  , 0.1  ],
+              [0    , 0.1  , 0    , 0    , 0     , 0.1  , 0    , 0    , 0    , 0.1  , 0.03 , 0.03 , 0.03 , 0.1  , 0.08 , 0.1  , 0.08 ],
+              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.03 , 0.03 , 0.03 , 0.03 , 0.1  , 0.05 , 0.05 , 0.05 ],
+              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.03 , 0.03 , 0.03 , 0.03 , 0.1  , 0.05 , 0.05 , 0.03 ]])
+C *= Kscale
+
+################################
+## Specify synapse properties ##
+################################
 
 S = np.array([["I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I","I"],
               ["E","E","E","E","E","E","E","E","E","E","E","E","E","E","E","E","E"], 
@@ -124,29 +125,20 @@ SS = np.array([[1.73, 0.53, 0.48, 0.57, 0.78, 0.42, 0   , 0   , 0   , 0.42, 0   
                [0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0.28, 0.18, 0.33, 0.37, 0.28, 0.18, 0.33, 0.37]])
 SS *= Sscale
 
-# Connectivity matrix layertype X layertype
-C = np.array([[0.656, 0.356, 0.093, 0.068, 0.4644, 0.148, 0    , 0    , 0    , 0.148, 0    , 0    , 0    , 0.148, 0    , 0    , 0    ],
-              [0    , 0.16 , 0.395, 0.182, 0.105 , 0.016, 0.083, 0.083, 0.083, 0.083, 0.081, 0.102, 0    , 0    , 0    , 0    , 0    ],
-              [0.024, 0.411, 0.451, 0.03 , 0.22  , 0.05 , 0.05 , 0.05 , 0.05 , 0.07 , 0.073, 0    , 0    , 0    , 0    , 0    , 0    ],
-              [0.279, 0.424, 0.857, 0.082, 0.77  , 0.05 , 0.05 , 0.05 , 0.05 , 0.021, 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
-              [0    , 0.087, 0.02 , 0.625, 0.028 , 0.05 , 0.05 , 0.05 , 0.05 , 0    , 0    , 0    , 0    , 0    , 0    , 0    , 0    ],
-              [0    , 0.14 , 0.100, 0.1  , 0.1   , 0.243, 0.43 , 0.571, 0.571, 0.104, 0.101, 0.128, 0.05 , 0.032, 0    , 0    , 0    ],
-              [0    , 0.25 , 0.050, 0.05 , 0.05  , 0.437, 0.451, 0.03 , 0.22 , 0.088, 0.091, 0.03 , 0.03 , 0    , 0    , 0    , 0    ],
-              [0.241, 0.25 , 0.050, 0.05 , 0.05  , 0.351, 0.857, 0.082, 0.77 , 0.026, 0.03 , 0    , 0.03 , 0    , 0    , 0    , 0    ],
-              [0    , 0.25 , 0.050, 0.05 , 0.05  , 0.351, 0.02 , 0.625, 0.028, 0    , 0.03 , 0.03 , 0.03 , 0    , 0    , 0    , 0    ],
-              [0.017, 0.021, 0.05 , 0.05 , 0.05  , 0.007, 0.05 , 0.05 , 0.05 , 0.116, 0.083, 0.063, 0.105, 0.047, 0.03 , 0.03 , 0.03 ],
-              [0    , 0    , 0.102, 0    , 0     , 0    , 0.034, 0.03 , 0.03 , 0.455, 0.361, 0.03 , 0.22 , 0.03 , 0.01 , 0.01 , 0.01 ],
-              [0.203, 0.169, 0    , 0.017, 0     , 0.056, 0.03 , 0.006, 0.03 , 0.317, 0.857, 0.04 , 0.77 , 0.03 , 0.01 , 0.01 , 0.01 ],
-              [0    , 0    , 0    , 0    , 0     , 0.03 , 0.03 , 0.03 , 0.03 , 0.125, 0.02 , 0.625, 0.02 , 0.03 , 0.01 , 0.01 , 0.01 ],
-              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.012, 0.01 , 0.01 , 0.01 , 0.026, 0.145, 0.1  , 0.1  ],
-              [0    , 0.1  , 0    , 0    , 0     , 0.1  , 0    , 0    , 0    , 0.1  , 0.03 , 0.03 , 0.03 , 0.1  , 0.08 , 0.1  , 0.08 ],
-              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.03 , 0.03 , 0.03 , 0.03 , 0.1  , 0.05 , 0.05 , 0.05 ],
-              [0    , 0    , 0    , 0    , 0     , 0    , 0    , 0    , 0    , 0.03 , 0.03 , 0.03 , 0.03 , 0.1  , 0.05 , 0.05 , 0.03 ]])
-C *= Kscale
+########################
+## Create the network ##
+########################
+
+network = Network(resolution, params['rec_start'], params['rec_stop'])
+
+# Populations
+print("Populating network...")
+for i in range(len(layertypes)):
+    network.addpop('glif_psc', int(num_neurons[i]*Nscale), CELLS[layertypes[i]], label=label[i], nrec=int(Rscale* num_neurons[i]))
 
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
-#ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
-ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
+ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
+#ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
 stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e0, 7.5e0, 3.6, 0.8, 4.1, 4e0, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
 # relative_weight = [1,                                                                                       ## Layer 1
 #                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
@@ -193,7 +185,6 @@ print("Done! Estimating LFPs per layer...")
 times = np.unique(mmdata[0]["times"])
 
 ## Approximate the lfp timecourse per layer
-#lfp_tc_l1, all_tc = approximate_lfp_timecourse(mmdata)
 lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times, label[0])
 print("Layer 1 finished")
 lfp_tc_l2 = approximate_lfp_timecourse(mmdata[1:5], times, label[1:5])
@@ -219,16 +210,17 @@ ax.plot(t, lfp_tc_l4, label = "Layer 5")
 ax.plot(t, lfp_tc_l5, label = "Layer 6")
 legend = ax.legend(loc='right', bbox_to_anchor=(1.3, 0.7), shadow=False, ncol=1)
 plt.show()
-print("All done!")
+plt.savefig('LFP_approximation.png')
 
 temp = np.vstack([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
 
 plt.figure()
 plt.imshow(temp, aspect="auto")
 plt.show()
+plt.savefig('vstack.png')
+
+print("All done!")
 
 newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
-
-print(f"Standard deviations:\n{np.std(lfp_tc_l1)}\n{np.std(lfp_tc_l2)}\n{np.std(lfp_tc_l3)}\n{np.std(lfp_tc_l4)}\n{np.std(lfp_tc_l5)}")
 
 #icsd.CSD(lfp_tc)
