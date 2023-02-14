@@ -448,6 +448,8 @@ def approximate_lfp_timecourse(data, times):
         for the current layer
 
     """
+    
+    
     ## We are using a delay of 6ms in the excitatory populations to calculate the LFP
     ## (See the Mazzoni paper)
     ## Get the positions for the data used in the excitatory populations. Dependent on resolution
@@ -458,6 +460,7 @@ def approximate_lfp_timecourse(data, times):
     ## initialize arrays that will contain the sums of excitatory and inhibitory currents
     cin = np.zeros((len(delay),))
     cex = np.zeros((len(delay),))
+
     
     ## Go through all different neuronal populations of the current layer
     for d in range(len(data)):
@@ -473,43 +476,30 @@ def approximate_lfp_timecourse(data, times):
         
         ## get a list containing the synaptic current
         ## recordings per neuron
+        ## Heaviest bottleneck right now: I'll get you a coffee if you have better ideas
         mmdata = [I_syn[senders == s] for s in list(range(mn, mx+1))]
         
         ## The currents are already sorted by time, just
         ## sum them up at each point in time and save them in an array
-        currentsum = np.zeros(len(delay))
+        csum = np.zeros(len(delay))
         if l == "E":
-            for i in range(min(delay), max(delay)+1):
-                tmpsum = 0
-                for n in mmdata:
-                    tmpsum += n[i]
-                currentsum[i-min(delay)] = tmpsum
+            csum = np.array([sum(mmdata)[delay]])
         else:
-            for i in range(max(delay)-min(delay)+1):
-                tmpsum = 0
-                for n in mmdata:
-                    tmpsum += n[i]
-                currentsum[i] = tmpsum
+            csum = np.array([sum(mmdata)[delay - min(delay)]])
+        csum = csum.reshape(csum.shape[1],)
             
         ## Append to list. It now contains the sums of currents from each
         ## individual neuronal population
         if l == "E":
-            cex += currentsum
+            cex += csum
         else:
-            cin += currentsum
-    
+            cin += csum
     
     # Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
-    normalized = cex - 1.65*cin 
-    normalized = normalized - np.mean(normalized)
-    # normalize(cex - 1.65*cin)
-    
-    # for x in mmall:
-    #     for i in range(len(x)):
-    #         x[i] = normalize(x[i])
+    normalized = normalize(cex - 1.65*cin)
     
     ## return the normalized LFP timecourse.
-    return normalized#, mmall
+    return normalized
 
 def normalize(data):
     """

@@ -10,12 +10,15 @@ from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi
 #import icsd
 import time
 
+# get the start time
+st = time.time()
+
 ########################
 ## Set NEST Variables ##
 ########################
 
 nest.ResetKernel()
-nest.local_num_threads = 4 ## adapt if necessary
+nest.local_num_threads = 256 ## adapt if necessary
 nest.print_time = False
 resolution = 0.1
 nest.resolution = resolution
@@ -47,10 +50,10 @@ label = ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E
 parameters = ['adapting_threshold', 'after_spike_currents', 'asc_amps', 'asc_decay', 'asc_init', 'C_m', 'E_L', 'g', 'spike_dependent_threshold', 't_ref', 'tau_syn', 'V_m', 'V_reset', 'V_th']
 
 ## Scaling
-Nscale = 1.                 ## Scaling the number of neurons in
-Kscale = 1.                 ## Scaling the number of connections 
+Nscale = .1                 ## Scaling the number of neurons in
+Kscale = .15                 ## Scaling the number of connections 
 Sscale = 1.                 ## Scaling the synaptic strength
-Rscale = Nscale * 0.2       ## Scaling the number of neurons we record from
+Rscale = Nscale * 0.3       ## Scaling the number of neurons we record from
 
 ext_rate = 900*8 * Kscale   ## Noise rate (Nr. of noise inputs * Frequency * Scaling factor)
 
@@ -133,21 +136,26 @@ SS *= Sscale
 network = Network(resolution, params['rec_start'], params['rec_stop'])
 
 # Populations
+print(f"Time required for setup: {time.time() - st}")
 print("Populating network...")
 for i in range(len(layertypes)):
     network.addpop('glif_psc', int(num_neurons[i]*Nscale), CELLS[layertypes[i]], label=label[i], nrec=int(Rscale* num_neurons[i]))
 
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
-ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
-#ext_rates = np.array([1900, 2600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale
-stim_weights = [5, 3.97, 2.2, 4.2, 2.1, 3e-24, 7.5e0, 3.6, 0.8, 4.1, 4e0, 1.8, 0.02, 7.5, 2e-20, 3.2, 2.2 ]
+#ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale ## original
+ext_rates = np.array([1400, 1000, 1400, 1200, 1100, 1500, 1800, 1800, 1800, 1700, 1900, 1900, 1900, 2600, 2100, 2100, 2100]) * 8 * Kscale
+stim_weights = [5, 
+                1.97, 2.2, 4.2, 1.5, 
+                3e0, 7.5e0, 3.6, 0.8, 
+                3.58, 4e0, 1.8, 0.02, 
+                6.5, 2e-20, 3.2, 2.2 ]
 # relative_weight = [1,                                                                                       ## Layer 1
 #                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
 #                     1, 9502/(9502+5455+2640), 5455/(9502+5455+2640), 2640/(9502+5455+2640),                  ## Layer 4
 #                     1, 2186/(2186+1958+410), 1958/(2186+1958+410), 410/(2186+1958+410),                      ## Layer 5
 #                     1, 1869/(1869+1869+325), 1869/(1869+1869+325), 325/(1869+1869+325)
 #                     ]
-# ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * relative_weight * 8 * Kscale
+#ext_rates = np.array([1500, 1200, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * relative_weight * 8 * Kscale
 
 # # add stimulation
 for i in range(len(ext_rates)):
@@ -155,16 +163,20 @@ for i in range(len(ext_rates)):
 
 ## Connect all populations to each other according to the
 ## connectivity matrix and synaptic specifications
+print(f"Time required to populate network: {time.time() - st}")
 print("Connecting network...")
 network.connect_all(C, S, SS)
+print(f"Time required for connection setup: {time.time() - st}")
 print("Done! Starting simulation...")
 
 ## simulate
 network.simulate(params['sim_time'])
+print(f"Time required for simulation: {time.time() - st}")
 print("Done! Fetching data...")
 
 ## Extract data from the network
 mmdata, spikes = network.get_data()
+print(f"Time required for fetching data: {time.time() - st}")
 print("Done! Graphing spikes...")
 
 ## Define colors used in the raster plot per neuron population based on label
@@ -177,6 +189,7 @@ plt.show()
 
 ## Display the average firing rate in Hz
 rate(spikes, params['rec_start'], params['rec_stop'])
+print(f"Time required for graphing grid: {time.time() - st}")
 print("Done! Estimating LFPs per layer...")
 
 #################################
@@ -200,22 +213,25 @@ lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times)
 print("Layer 5 finished")
 lfp_tc_l5 = approximate_lfp_timecourse(mmdata[13:17], times)
 print("Layer 6 finished, plotting...")
+print(f"Time required for layer estimation procedure: {time.time() - st}")
 
 ##################
 ## Timing Stuff ##
 ##################
-# get the start time
-st = time.time()
+# # get the start time
+# st = time.time()
 
-## The stuff to time
-lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times)
+# ## The stuff to time
+# lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times)
 
-# get the end time
-et = time.time()
+# # get the end time
+# et = time.time()
 
-# get the execution time
-elapsed_time = et - st
-print(elapsed_time)
+# # get the execution time
+# elapsed_time = et - st
+# print(elapsed_time)
+
+## Current best: 5.36
 
 ## Correct for data loss during lfp approximation 
 ## (6ms due to methodological reasons, see approximation function)
@@ -242,6 +258,7 @@ plt.imshow(temp, aspect="auto")
 plt.show()
 plt.savefig('vstack.png')
 
+print(f"Time required for plotting and final time: {time.time() - st}")
 print("All done!")
 
 newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])

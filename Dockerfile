@@ -177,7 +177,9 @@ COPY . /code
 EXPOSE 5000 8080
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+        chmod +x /code/simulation/run.py
+
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 #ENTRYPOINT ["/bin/bash"]
