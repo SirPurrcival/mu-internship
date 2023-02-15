@@ -50,8 +50,8 @@ label = ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E
 parameters = ['adapting_threshold', 'after_spike_currents', 'asc_amps', 'asc_decay', 'asc_init', 'C_m', 'E_L', 'g', 'spike_dependent_threshold', 't_ref', 'tau_syn', 'V_m', 'V_reset', 'V_th']
 
 ## Scaling
-Nscale = .1                 ## Scaling the number of neurons in
-Kscale = .15                 ## Scaling the number of connections 
+Nscale = .05                 ## Scaling the number of neurons in
+Kscale = .13                 ## Scaling the number of connections 
 Sscale = 1.                 ## Scaling the synaptic strength
 Rscale = Nscale * 0.3       ## Scaling the number of neurons we record from
 

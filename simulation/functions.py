@@ -541,8 +541,16 @@ def get_isi(spike_times):
     all_isi = [np.diff(x) for sublist in spike_times for x in sublist]
     return [element for sublist in all_isi for element in sublist]
 
-def get_synchrony():
-    pass
+def get_synchrony(spike_times_list, bin_width=3e-3):
+    synchronies = []
+    for spike_times in spike_times_list:
+        binned_spikes, _ = np.histogram(spike_times, bins=np.arange(spike_times.min(), spike_times.max() + bin_width, bin_width))
+        mean_spikes = np.mean(binned_spikes)
+        var_spikes = np.var(binned_spikes)
+        synchrony = var_spikes / mean_spikes
+        synchronies.append(synchrony)
+    layer_synchrony = np.mean(synchronies)
+    return layer_synchrony
 
 def get_irregularity(spike_times):
     """
