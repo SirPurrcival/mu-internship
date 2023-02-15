@@ -391,7 +391,7 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
     
     plt.tight_layout(pad=1)
 
-    plt.savefig('raster.png')
+    plt.savefig('simresults/raster.png')
 
 def rate(spikes, rec_start, rec_stop):
     """

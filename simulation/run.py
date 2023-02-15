@@ -50,10 +50,10 @@ label = ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E
 parameters = ['adapting_threshold', 'after_spike_currents', 'asc_amps', 'asc_decay', 'asc_init', 'C_m', 'E_L', 'g', 'spike_dependent_threshold', 't_ref', 'tau_syn', 'V_m', 'V_reset', 'V_th']
 
 ## Scaling
-Nscale = .05                 ## Scaling the number of neurons in
-Kscale = .13                 ## Scaling the number of connections 
+Nscale = 1.                 ## Scaling the number of neurons in
+Kscale = 1.                 ## Scaling the number of connections 
 Sscale = 1.                 ## Scaling the synaptic strength
-Rscale = Nscale * 0.3       ## Scaling the number of neurons we record from
+Rscale = Nscale * 0.05      ## Scaling the number of neurons we record from
 
 ext_rate = 900*8 * Kscale   ## Noise rate (Nr. of noise inputs * Frequency * Scaling factor)
 
@@ -143,7 +143,7 @@ for i in range(len(layertypes)):
 
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
 #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale ## original
-ext_rates = np.array([1400, 1000, 1400, 1200, 1100, 1500, 1800, 1800, 1800, 1700, 1900, 1900, 1900, 2600, 2100, 2100, 2100]) * 8 * Kscale
+ext_rates = np.array([1400, 1000, 1400, 1200, 1100, 1500, 1800, 1800, 1800, 1700, 1900, 1900, 1900, 2600, 2100, 2100, 2100])* 0.1 * 1 * Kscale
 stim_weights = [5, 
                 1.97, 2.2, 4.2, 1.5, 
                 3e0, 7.5e0, 3.6, 0.8, 
@@ -249,14 +249,14 @@ plt.show()
 
 legend = ax.legend(loc='right', bbox_to_anchor=(1.3, 0.7), shadow=False, ncol=1)
 plt.show()
-plt.savefig('LFP_approximation.png')
+plt.savefig('simresults/LFP_approximation.png')
 
 temp = np.vstack([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
 
 plt.figure()
 plt.imshow(temp, aspect="auto")
 plt.show()
-plt.savefig('vstack.png')
+plt.savefig('simresults/vstack.png')
 
 print(f"Time required for plotting and final time: {time.time() - st}")
 print("All done!")
