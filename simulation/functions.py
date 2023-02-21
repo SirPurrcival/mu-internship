@@ -392,10 +392,10 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
     plt.tight_layout(pad=1)
 
     plt.savefig('simresults/raster.png')
-
+  
 def rate(spikes, rec_start, rec_stop):
     """
-    Displays the average rate of spiking for the network in Hz.
+    Returns the average rate of spiking for the network in Hz.
     
     Parameters
     ----------
@@ -408,7 +408,8 @@ def rate(spikes, rec_start, rec_stop):
 
     Returns
     -------
-    None.
+    fr : float.
+        The mean firing rate of the network during the recorded period in Hz.
 
     """
     
@@ -419,11 +420,11 @@ def rate(spikes, rec_start, rec_stop):
         nrec_total += len(i)
 
     time_diff = (rec_stop - rec_start)/1000.
-    average_firing_rate = (len(spikes_total)
-                           /time_diff
-                           /(nrec_total))
-    print(f'Average firing rate: {average_firing_rate} Hz')
-    
+    fr = (len(spikes_total)
+          /time_diff
+          /(nrec_total))
+    print(f'Average firing rate: {fr} Hz')
+    return fr
 
 def approximate_lfp_timecourse(data, times):
     """
@@ -538,19 +539,11 @@ def get_isi(spike_times):
         Returns a list of interspike intervalls
 
     """
-    all_isi = [np.diff(x) for sublist in spike_times for x in sublist]
-    return [element for sublist in all_isi for element in sublist]
+    return [np.diff(x) for x in spike_times if len(x) > 1]
 
-def get_synchrony(spike_times_list, bin_width=3e-3):
-    synchronies = []
-    for spike_times in spike_times_list:
-        binned_spikes, _ = np.histogram(spike_times, bins=np.arange(spike_times.min(), spike_times.max() + bin_width, bin_width))
-        mean_spikes = np.mean(binned_spikes)
-        var_spikes = np.var(binned_spikes)
-        synchrony = var_spikes / mean_spikes
-        synchronies.append(synchrony)
-    layer_synchrony = np.mean(synchronies)
-    return layer_synchrony
+def get_synchrony(populations):
+    pass
+
 
 def get_irregularity(spike_times):
     """
@@ -569,9 +562,16 @@ def get_irregularity(spike_times):
 
     """
     isi = get_isi(spike_times)
-    mean_isi = np.mean(isi)
-    cv = np.std(isi) / mean_isi
-    return cv
+    print(f"THE ISI IS: {isi}")
+    iv = np.std(isi) / np.mean(isi)
+    #mean_isi = np.mean(isi)
+    #cv = np.std(isi) / mean_isi
+    return iv
 
-def get_firing_rate():
-    pass
+def get_firing_rate(spike_times, start, stop):
+    spikes_total = list(itertools.chain(*spike_times))
+    dt = (stop - start) / 1000
+    afr = len(spikes_total)/dt/len(spike_times) ## (stop-start) / 1000
+    
+    return afr
+
