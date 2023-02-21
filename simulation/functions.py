@@ -300,6 +300,9 @@ class Network:
         for d in self.__multimeter:
             mmlist.append(nest.GetStatus(d)[0]["events"])
             
+        ## Get unaltered spike data
+        spike_data = [nest.GetStatus(r) for r in self.__spike_recorder]
+        
         return mmlist, self.data
 
 # Helper functions

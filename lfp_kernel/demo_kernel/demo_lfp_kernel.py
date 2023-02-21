@@ -10,7 +10,7 @@ N = 5000  # nb of cells to consider
 Ne = 4000  # nb of excitatory cells
 Ni = 1000  # nb of inhibitory cells
 
-tmin = 9000  # min time (to skip)w
+tmin = 9000  # min time (to skip)
 tmax = 1000  # max time
 
 dtype = {"names": ["cellid", "time"], "formats": ["i4", "f8"]}
