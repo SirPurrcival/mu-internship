@@ -299,9 +299,6 @@ class Network:
         mmlist = []
         for d in self.__multimeter:
             mmlist.append(nest.GetStatus(d)[0]["events"])
-            
-        ## Get unaltered spike data
-        spike_data = [nest.GetStatus(r) for r in self.__spike_recorder]
         
         return mmlist, self.data
 
@@ -542,7 +539,7 @@ def get_isi(spike_times):
         Returns a list of interspike intervalls
 
     """
-    return [np.diff(x) for x in spike_times if len(x) > 1]
+    return [np.diff(x) if len(x) > 1 else [] for x in spike_times]
 
 def get_synchrony(populations):
     pass
@@ -560,21 +557,21 @@ def get_irregularity(spike_times):
 
     Returns
     -------
-    cv : float
+    iv : float
         A measure of irregularity, bounded between 0 and 1, where 1 is the highest and 0 the lowest.
 
     """
-    isi = get_isi(spike_times)
-    print(f"THE ISI IS: {isi}")
-    iv = np.std(isi) / np.mean(isi)
-    #mean_isi = np.mean(isi)
-    #cv = np.std(isi) / mean_isi
+    all_spikes = [list(itertools.chain(*x)) for x in spike_times]
+    print(all_spikes)
+    isi_lst = [get_isi(spk) for spk in all_spikes]
+    print(isi_lst)
+    iv = [np.std(isi)/np.mean(isi) if len(isi) > 1 else -1 for isi in isi_lst]
     return iv
 
 def get_firing_rate(spike_times, start, stop):
     spikes_total = list(itertools.chain(*spike_times))
     dt = (stop - start) / 1000
-    afr = len(spikes_total)/dt/len(spike_times) ## (stop-start) / 1000
+    afr = len(spikes_total)/dt/len(spike_times)
     
     return afr
 

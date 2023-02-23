@@ -11,12 +11,12 @@ from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi
 import time
 
 ## Set the scaling factors for the model
-Nscale = .05                 ## Scaling the number of neurons in
-Kscale = .13                 ## Scaling the number of connections 
-Sscale = 1.                 ## Scaling the synaptic strength
-Rscale = Nscale * 0.1      ## Scaling the number of neurons we record from
+Nscale = .5                  ## Scaling the number of neurons in
+Kscale = .5                  ## Scaling the number of connections 
+Sscale = 1.                  ## Scaling the synaptic strength
+Rscale = Nscale * 0.1        ## Scaling the number of neurons we record from
 
-# get the start time
+## get the start time
 st = time.time()
 
 ########################
@@ -147,7 +147,7 @@ for i in range(len(layertypes)):
 
 ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
 #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale ## original
-ext_rates = np.array([1400, 1000, 1400, 1200, 1100, 1500, 1800, 1800, 1800, 1700, 1900, 1900, 1900, 2600, 2100, 2100, 2100])* 8 * 1 * Kscale
+ext_rates = np.array([1400, 1000, 1400, 1200, 1100, 1500, 1800, 1800, 1800, 1700, 1900, 1900, 1900, 2600, 2100, 2100, 2100])* 4 * 1 * Kscale
 stim_weights = [5, 
             1.97, 2.2, 4.2, 1.5, 
             3e0, 7.5e0, 3.6, 0.8, 
@@ -209,13 +209,13 @@ for i in range(len(mmdata)):
 ## Approximate the lfp timecourse per layer
 lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times)
 print("Layer 1 finished")
-lfp_tc_l2 = approximate_lfp_timecourse(mmdata[1:5], times)
+lfp_tc_l23 = approximate_lfp_timecourse(mmdata[1:5], times)
 print("Layer 2/3 finished")
-lfp_tc_l3 = approximate_lfp_timecourse(mmdata[5:9], times)
+lfp_tc_l4 = approximate_lfp_timecourse(mmdata[5:9], times)
 print("Layer 4 finished")
-lfp_tc_l4 = approximate_lfp_timecourse(mmdata[9:13], times)
+lfp_tc_l5 = approximate_lfp_timecourse(mmdata[9:13], times)
 print("Layer 5 finished")
-lfp_tc_l5 = approximate_lfp_timecourse(mmdata[13:17], times)
+lfp_tc_l6 = approximate_lfp_timecourse(mmdata[13:17], times)
 print("Layer 6 finished, plotting...")
 print(f"Time required for layer estimation procedure: {time.time() - st}")
 
@@ -245,17 +245,17 @@ t = t.reshape(t.shape[0],)
 ## plot the timecourse in the recorded time window
 fig, ax = plt.subplots()
 ax.plot(t, lfp_tc_l1, label = "Layer 1")
-ax.plot(t, lfp_tc_l2, label = "Layer 2/3")
-ax.plot(t, lfp_tc_l3, label = "Layer 4")
-ax.plot(t, lfp_tc_l4, label = "Layer 5")
-ax.plot(t, lfp_tc_l5, label = "Layer 6")
+ax.plot(t, lfp_tc_l23, label = "Layer 2/3")
+ax.plot(t, lfp_tc_l4, label = "Layer 4")
+ax.plot(t, lfp_tc_l5, label = "Layer 5")
+ax.plot(t, lfp_tc_l6, label = "Layer 6")
 plt.show()
 
 legend = ax.legend(loc='right', bbox_to_anchor=(1.3, 0.7), shadow=False, ncol=1)
 plt.show()
 plt.savefig('simresults/LFP_approximation.png')
 
-temp = np.vstack([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
+temp = np.vstack([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
 
 plt.figure()
 plt.imshow(temp, aspect="auto")
@@ -265,13 +265,14 @@ plt.savefig('simresults/vstack.png')
 print(f"Time required for plotting and final time: {time.time() - st}")
 print("All done!")
 
-newlst = np.array([lfp_tc_l1, lfp_tc_l2, lfp_tc_l3, lfp_tc_l4, lfp_tc_l5])
+newlst = np.array([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
 
 # results = []
 # for spk in spikes:
 #     print(f"Average firing rate: {get_firing_rate(spk, params['rec_start'], params['rec_stop'])} \nIrregularity: {get_irregularity(spk)} \nSynchrony: {get_synchrony(spk)}")
 #     results.append([get_firing_rate(spk, params['rec_start'], params['rec_stop']), get_irregularity(spk), get_synchrony(spk)])
 #     #return results
-    
+#print(get_irregularity(spikes))
+
 #run_model()
 #icsd.CSD(lfp_tc)
