@@ -541,32 +541,39 @@ def get_isi(spike_times):
     """
     return [np.diff(x) if len(x) > 1 else [] for x in spike_times]
 
-def get_synchrony(populations):
-    pass
+def get_synchrony(population, start, stop):
+    spike_counts = np.histogram(np.concatenate(population), bins=np.arange(start, stop+3, 3))[0]
+    mean_spike_count = np.mean(spike_counts)
+    if mean_spike_count == 0:
+        return 99
+    var_spike_count = np.var(spike_counts)
+    vm_ratio = var_spike_count / mean_spike_count
+    return vm_ratio
 
 
-def get_irregularity(spike_times):
+def get_irregularity(population):
     """
     Calculates an irregularity measure based on Potjans & Diesmann (2014)
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3920768/
 
     Parameters
     ----------
-    spike_times : list
-        A list containing the arrays of spike times for each population
+    population : list
+        A list containing the arrays of spike times for each neuron in the population
 
     Returns
     -------
-    iv : float
+    cv : float
         A measure of irregularity, bounded between 0 and 1, where 1 is the highest and 0 the lowest.
+        Returns -1 if there is no data for that population
 
     """
-    all_spikes = [list(itertools.chain(*x)) for x in spike_times]
-    print(all_spikes)
-    isi_lst = [get_isi(spk) for spk in all_spikes]
-    print(isi_lst)
-    iv = [np.std(isi)/np.mean(isi) if len(isi) > 1 else -1 for isi in isi_lst]
-    return iv
+    try:
+        isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
+    except:
+        return -1
+    cv = np.std(isi) / np.mean(isi)
+    return cv if np.isfinite(cv) else np.nan
 
 def get_firing_rate(spike_times, start, stop):
     spikes_total = list(itertools.chain(*spike_times))
