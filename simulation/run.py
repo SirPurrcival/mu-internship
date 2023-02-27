@@ -11,8 +11,8 @@ from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi
 import time
 
 ## Set the scaling factors for the model
-Nscale = .5                  ## Scaling the number of neurons in
-Kscale = .5                  ## Scaling the number of connections 
+Nscale = .05                  ## Scaling the number of neurons in
+Kscale = .15                  ## Scaling the number of connections 
 Sscale = 1.                  ## Scaling the synaptic strength
 Rscale = Nscale * 0.1        ## Scaling the number of neurons we record from
 
