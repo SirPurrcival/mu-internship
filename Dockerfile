@@ -158,7 +158,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10 && \
-    pip install quantities lazyarray neo pydmd bayesian-optimization && \
+    pip install quantities lazyarray neo pydmd bayesian-optimization mpi4py && \
     pip install uwsgi &&\
      wget https://github.com/NeuralEnsemble/PyNN/archive/nest-dev.tar.gz && \
      tar -xzf nest-dev.tar.gz && \

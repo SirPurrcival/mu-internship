@@ -282,7 +282,7 @@ def run_network(params):
     return (irregularity, synchrony, firing_rate)
      
 params = setup()
-params['ext_rate'] = nyan['ext_rate']
-params['ext_nodes'] = np.array([nyan[x] for x in nyan if 'node' in x])
-params['ext_weights'] = np.array([nyan[x] for x in nyan if 'weights' in x])
+# params['ext_rate'] = nyan['ext_rate']
+# params['ext_nodes'] = np.array([nyan[x] for x in nyan if 'node' in x])
+# params['ext_weights'] = np.array([nyan[x] for x in nyan if 'weights' in x])
 nya = run_network(params)

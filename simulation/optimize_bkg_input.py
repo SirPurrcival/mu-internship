@@ -1,16 +1,24 @@
 from bayes_opt import BayesianOptimization
 from run import run_network, setup
+from mpi4py.futures import MPIPoolExecutor
 import numpy as np
+from mpi4py import MPI
 
 # Define the objective function
 def objective_function(**kwargs):#ext_rate, ext_nodes, ext_weights):
     # Set the network parameters based on the input values
     params = setup()
     
+    ## Set the amount of analysis done during runtime. Minimize stuff done
+    ## for faster results
+    params['calc_lfp'] = False
+    params['verbose']  = False
+    params['opt_run']  = True
+    
     temp = kwargs
     ## Change values and run the function with different parameters
     params['ext_rate'] = temp['ext_rate']
-    params['ext_nodes'] = np.array([kwargs[x] for x in temp if 'node' in x])
+    #params['ext_nodes'] = np.array([kwargs[x] for x in temp if 'node' in x])
     params['ext_weights'] = np.array([kwargs[x] for x in temp if 'weights' in x])
 
     # Run the spiking neuron model in NEST and compute the output measures
@@ -19,17 +27,17 @@ def objective_function(**kwargs):#ext_rate, ext_nodes, ext_weights):
     ## Define target values
     target_irregularity = 0.8
     target_synchrony    = 0.1
-    min_firing_rate     = 2
-    max_firing_rate     = 10
+    target_firing_rate  = 5
     
     ## Compute scores for how close to our target values we got this run
-    scores = []
-    for i in range(len(irregularity)):
-        score = (target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + max(0, (firing_rate[i] - max_firing_rate)**2) + max(0, (min_firing_rate - firing_rate[i])**2)
-        scores.append(score)
+    scores = [(target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + (firing_rate[i] - target_firing_rate)**2 for i in list(range(len(irregularity)))]
+    # scores = []
+    # for i in range(len(irregularity)):
+    #     score = (target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + (firing_rate[i] - target_firing_rate)**2
+    #     scores.append(score)
     
     # Return the negative of the score since the Bayesian optimization maximizes the objective function
-    return -np.mean(score)
+    return -np.mean(scores)
 
 def optimize_network():
     # Define the parameter space
@@ -37,22 +45,31 @@ def optimize_network():
     pbounds = dict()
     pbounds['ext_rate'] = (0.5, 8)
     for i in range(17):
-        pbounds[f'pop{i}_stim_nodes'] = (500,2000)
+        #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
         pbounds[f'pop{i}_weights'] = (1e-24, 7e0)
 
+    # Get the rank of the MPI process
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    n_workers = comm.Get_size()
+    
     # Define the Bayesian optimizer
     optimizer = BayesianOptimization(
         f=objective_function,
         pbounds=pbounds,
         random_state=1,
     )
-
+    
+    
+    n_workers = 4  # number of MPI processes
+    with MPIPoolExecutor(max_workers=n_workers) as executor:
     # Choose an acquisition function
-    optimizer.maximize(
-        init_points=50,
-        n_iter=100,
-        acq='ei',
-    )
+        optimizer.maximize(
+            init_points=30,
+            n_iter=70,
+            acq='ei',
+            executor=executor
+        )
     optimizer.maximize()
     
     # Get the optimal set of parameters
