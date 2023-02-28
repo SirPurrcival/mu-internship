@@ -1,8 +1,6 @@
 from bayes_opt import BayesianOptimization
 from run import run_network, setup
 import numpy as np
-import matplotlib.pyplot as plt
-
 
 # Define the objective function
 def objective_function(**kwargs):#ext_rate, ext_nodes, ext_weights):
@@ -24,7 +22,7 @@ def objective_function(**kwargs):#ext_rate, ext_nodes, ext_weights):
     min_firing_rate     = 2
     max_firing_rate     = 10
     
-    ## Compute scores for how close to our target values 
+    ## Compute scores for how close to our target values we got this run
     scores = []
     for i in range(len(irregularity)):
         score = (target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + max(0, (firing_rate[i] - max_firing_rate)**2) + max(0, (min_firing_rate - firing_rate[i])**2)
@@ -51,15 +49,11 @@ def optimize_network():
 
     # Choose an acquisition function
     optimizer.maximize(
-        init_points=5,
-        n_iter=20,
+        init_points=50,
+        n_iter=100,
         acq='ei',
     )
     optimizer.maximize()
-    
-    # Visualize the progress
-    optimizer.plot_progress()
-    plt.show()
     
     # Get the optimal set of parameters
     optimal_params = optimizer.max['params']
