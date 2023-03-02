@@ -21,13 +21,13 @@ def setup():
         'rec_start'  :   600.,                                                      # start point for data recording
         'rec_stop'   :   800.,                                                      # end points for data recording
         'sim_time'   :  1000.,                                                      # Time the network is simulated in ms
-        'calc_lfp'   :  True,                                                      # Flag to use LFP approximation procedure
+        'calc_lfp'   :  False,                                                      # Flag to use LFP approximation procedure
         'verbose'    :  True,                                                      # Flag for verbose function output
         'K_scale'    :     .2,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
         'N_scale'    :     .05,                                                      # Scaling factor for the number of neurons
         'R_scale'    :     1,                                                      # Fraction of neurons to be recorded from
-        'opt_run'    :   False,                                                      # Flag for optimizer run, run minimal settings
+        'opt_run'    :   True,                                                      # Flag for optimizer run, run minimal settings
         'num_neurons': np.array([776, 47386, 3876, 2807, 6683, 70387, 9502, 5455,   # Number of neurons by population
                           2640, 20740, 2186, 1958, 410, 19839, 1869, 1869, 325]),
         'label'      : ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv',   # Label for the populations
@@ -129,7 +129,7 @@ def run_network(params):
     ########################
 
     nest.ResetKernel()
-    nest.local_num_threads = 256 ## adapt if necessary
+    nest.local_num_threads = 64 ## adapt if necessary
     nest.print_time = False
     resolution = 0.1
     nest.resolution = resolution
@@ -281,8 +281,8 @@ def run_network(params):
     
     return (irregularity, synchrony, firing_rate)
      
-params = setup()
+#params = setup()
 # params['ext_rate'] = nyan['ext_rate']
 # params['ext_nodes'] = np.array([nyan[x] for x in nyan if 'node' in x])
 # params['ext_weights'] = np.array([nyan[x] for x in nyan if 'weights' in x])
-nya = run_network(params)
+#nya = run_network(params)

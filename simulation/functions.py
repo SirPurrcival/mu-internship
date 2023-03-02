@@ -546,7 +546,7 @@ def get_synchrony(population, start, stop):
     mean_spike_count = np.mean(spike_counts)
     if mean_spike_count == 0:
         ## Penalize no firing rate more than high synchrony
-        return 2
+        return 50
     var_spike_count = np.var(spike_counts)
     vm_ratio = var_spike_count / mean_spike_count
     return vm_ratio
@@ -573,7 +573,7 @@ def get_irregularity(population):
         isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
     except:
         ## Penalize no firing rate harder than no irregularity
-        return -1
+        return -50
     cv = np.std(isi) / np.mean(isi)
     return cv if np.isfinite(cv) else np.nan
 
@@ -581,6 +581,10 @@ def get_firing_rate(spike_times, start, stop):
     spikes_total = list(itertools.chain(*spike_times))
     dt = (stop - start) / 1000
     afr = len(spikes_total)/dt/len(spike_times)
+    
+    ## Penalize silent populations
+    if afr == 0:
+        return 10000
     
     return afr
 
