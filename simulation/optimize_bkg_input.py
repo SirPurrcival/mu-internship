@@ -7,6 +7,10 @@ from skopt import gp_minimize
 # from skopt.utils import use_named_args
 # from skopt.space import Real
 
+def simple_objective_function(x):
+    print(x)
+    return x[0]**2 + x[0] - x[0]**3 
+
 # Define the objective function
 def objective_function(args):#ext_rate, ext_nodes, ext_weights):
     # Set the network parameters based on the input values
@@ -41,13 +45,14 @@ def objective_function(args):#ext_rate, ext_nodes, ext_weights):
     return np.mean(scores)
 
 def optimize_network():
-    # Define the parameter space
-    
+    # Define the parameter space    
     pbounds = dict()
     pbounds['ext_rate'] = (0.5, 8)
     for i in range(17):
         #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
         pbounds[f'pop{i}_weights'] = (1e-24, 7e0)
+
+    #pbounds = [(-500, 500)]
 
     # # Get the rank of the MPI process
     # comm = MPI.COMM_WORLD
@@ -63,8 +68,9 @@ def optimize_network():
     
     res = gp_minimize(objective_function,                   # the function to minimize
                   list(pbounds.values()),
+                  #pbounds,
                   acq_func="EI",                            # the acquisition function
-                  n_calls=30,                               # the number of evaluations of f
+                  n_calls=300,                               # the number of evaluations of f
                   n_initial_points=10,                      # the number of random initialization points
                   random_state=1234,
                   acq_optimizer="lbfgs",

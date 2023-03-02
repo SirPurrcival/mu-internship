@@ -129,7 +129,7 @@ def run_network(params):
     ########################
 
     nest.ResetKernel()
-    nest.local_num_threads = 64 ## adapt if necessary
+    nest.local_num_threads = 1 ## adapt if necessary
     nest.print_time = False
     resolution = 0.1
     nest.resolution = resolution

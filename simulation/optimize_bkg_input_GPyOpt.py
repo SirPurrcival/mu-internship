@@ -21,8 +21,9 @@ def objective_function(kwargs):#ext_rate, ext_nodes, ext_weights):
     #params['ext_nodes'] = np.array([kwargs[x] for x in kwargs if 'node' in x])
     #params['ext_weights'] = np.array([kwargs[x] for x in kwargs if 'weight' in x])
 
-    # Run the spiking neuron model in NEST and compute the output measures
+    ## Run the spiking neuron model in NEST and compute the output measures
     (irregularity, synchrony, firing_rate) = run_network(params)
+    
     ## Define target values
     target_irregularity = 0.8
     target_synchrony    = 0.1
@@ -30,10 +31,6 @@ def objective_function(kwargs):#ext_rate, ext_nodes, ext_weights):
     
     ## Compute scores for how close to our target values we got this run
     scores = [(target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + (firing_rate[i] - target_firing_rate)**2 for i in list(range(len(irregularity)))]
-    # scores = []
-    # for i in range(len(irregularity)):
-    #     score = (target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + (firing_rate[i] - target_firing_rate)**2
-    #     scores.append(score)
     
     # Return the negative of the score since the Bayesian optimization maximizes the objective function
     return np.mean(scores)
@@ -53,7 +50,7 @@ def optimize_network():
     n_workers = 4
     
     # Define the initial set of points to evaluate
-    initial_points = 1
+    initial_points = 4
     
     # Define the optimization algorithm and run the optimization
     optimizer = GPyOpt.methods.BayesianOptimization(f=objective_function, domain=pbounds, initial_design_numdata=initial_points,
