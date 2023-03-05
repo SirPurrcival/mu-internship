@@ -251,56 +251,75 @@ class Network:
             Contains a list with sorted spike times for each individual neuron
 
         """
-        
-        ## Get the data f rom the spike recorder
-        #self.spike_times = nest.GetStatus(self.spike_recorder)
-        
-        ## Data storage:
-        self.data = []
-        
-        ## Divide spike times to populations
-        for i in range(len(self.__spike_recorder)):
-            
-            self.spike_times = nest.GetStatus(self.__spike_recorder[i])
-            
-            #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
-            
-            
-            
-            
-            
-            ## Create a list containing empty lists with size equal to nrec of that population.
-            ## For each of those lists get the range of IDs from the population
-            ## The IDs are then lowest ID of the population + nrec
-            ## Fill in the data for the corresponding senders == IDs
-            ## => 
-            tmp = [[]] * self.__nrec[i]
-            IDs = list(self.__populations[i].get(['global_id']).values())[0]
-            mn = min(IDs)
-            mx = mn + self.__nrec[i]
-            
-            # times = []
-            # self.min = min(self.IDs)
-            # self.max = max(self.IDs)
-            
-            ## Get sender IDs and times (in ms)
-            self.senders = self.spike_times[0]['events']['senders']
-            self.times = self.spike_times[0]['events']['times']
-            
-            i = 0
-            for n in range(mn, mx+1):
-                tmp[0].append(self.times[self.senders == n])
-                i += 1
-            
-            self.data.append(tmp[0])
-            
+        ################################################
+        ## Get spike data
+        spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.__spike_recorder]
         ################################################
         ## Get multimeter data
-        mmlist = []
-        for d in self.__multimeter:
-            mmlist.append(nest.GetStatus(d)[0]["events"])
+        mm_list = [nest.GetStatus(d)[0]['events'] for d in self.__multimeter]
         
-        return mmlist, self.data
+        return mm_list, spike_list
+    
+def prep_spikes(spike_list, network):
+    ## Create a list containing empty lists with size equal to nrec of that population.
+    ## For each of those lists get the range of IDs from the population
+    ## The IDs are then lowest ID of the population + nrec
+    ## Fill in the data for the corresponding senders == IDs
+    ## => 
+    ## Data storage:
+    #nrec = [len(a['senders']) for a in spike_list]
+    data = []
+    pops = network.get_pops()
+    nrec = network.get_nrec()
+        
+    ## Divide spike times to populations
+    for i in range(len(pops)):
+        
+        spike_times = spike_list[i]
+        
+        #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+        
+        ## Create a list containing empty lists with size equal to nrec of that population.
+        ## For each of those lists get the range of IDs from the population
+        ## The IDs are then lowest ID of the population + nrec
+        ## Fill in the data for the corresponding senders == IDs
+        ## => 
+        tmp = [[]] * nrec[i]
+        IDs = list(pops[i].get(['global_id']).values())[0]
+        mn = min(IDs)
+        mx = mn + nrec[i]
+        
+        # times = []
+        # self.min = min(self.IDs)
+        # self.max = max(self.IDs)
+        
+        ## Get sender IDs and times (in ms)
+        senders = spike_times['senders']
+        times = spike_times['times']
+        
+        #print(f"times: {times}")
+        ## Sort to make the mask work
+        order = np.argsort(senders)
+        senders_sorted = np.array(senders)[order]
+        times_sorted = np.array(times)[order]
+        
+        i = 0
+        for n in range(mn, mx):
+            tmp[0].append(times_sorted[senders_sorted == n])
+            #print(f"min: {mn}\nmax: {mx}\nsenders: {min(senders)} to {max(senders)}")
+            i += 1
+        
+        
+        data.append(tmp[0])
+        
+    # import pickle
+    # with open("prepspikes_pre", 'wb') as f:
+    #     pickle.dump(spike_list, f)
+    # with open("prepspikes_post", 'wb') as f:
+    #     pickle.dump(data, f)
+    return data
+    
+    
 
 # Helper functions
 def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
@@ -546,7 +565,7 @@ def get_synchrony(population, start, stop):
     mean_spike_count = np.mean(spike_counts)
     if mean_spike_count == 0:
         ## Penalize no firing rate more than high synchrony
-        return 50
+        return 2
     var_spike_count = np.var(spike_counts)
     vm_ratio = var_spike_count / mean_spike_count
     return vm_ratio
@@ -573,7 +592,7 @@ def get_irregularity(population):
         isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
     except:
         ## Penalize no firing rate harder than no irregularity
-        return -50
+        return -2
     cv = np.std(isi) / np.mean(isi)
     return cv if np.isfinite(cv) else np.nan
 
@@ -584,7 +603,34 @@ def get_firing_rate(spike_times, start, stop):
     
     ## Penalize silent populations
     if afr == 0:
-        return 10000
+        return 20
     
     return afr
 
+def join_results(simres):
+    """
+    Gathers and joins the results from the distributed simulation to be used in the rest of the script.
+
+    Parameters
+    ----------
+    simres : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    # Determine the number of inner lists and dictionaries in each inner list
+    merged_dicts = [{k: [] for k in simres[0][0].keys()} for i in range(17)]
+
+    # Merge the dictionaries
+    for inner_list in simres:
+        for i, d in enumerate(inner_list):
+            for k, v in d.items():
+                merged_dicts[i][k].extend(v)
+    # import pickle
+    # with open("join_results", 'wb') as f:
+    #     pickle.dump(simres, f)
+    return merged_dicts
+    
