@@ -21,6 +21,7 @@ def objective_function(**args):
     ## Change values and run the function with different parameters
     params['ext_rate'] = args['ext_rate']
     params['ext_weights'] = np.array([args[x] for x in args if 'weight' in x])
+    params['K_scale'] = args['K_scale']
 
     ## Write parameters to file so the network can read it in
     with open("params", 'wb') as f:
@@ -35,9 +36,11 @@ def objective_function(**args):
     
     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                cwd=cwd, env=env)
-    process.wait()
-    
+    return_code = process.wait()
+    # print("Script exited with return code:", return_code)
     output, error = process.communicate()
+    # print("Standard output:\n", output.decode())
+    # print("Error output:\n", error.decode())
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:
@@ -96,6 +99,7 @@ if __name__ == '__main__':
     for i in range(17):
         #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
         pbounds[f'pop{i}_weights'] = (1e-24, 7e0)
+    pbounds['K_scale'] = (0.15,1)
     
     # ## Define the Bayesian optimizer
     # optimizer = BayesianOptimization(

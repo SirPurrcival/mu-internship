@@ -16,8 +16,8 @@ def setup():
         'verbose'    :  True,                                                      # Flag for verbose function output
         'K_scale'    :     .18,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
-        'N_scale'    :     .05,                                                      # Scaling factor for the number of neurons
-        'R_scale'    :     1,                                                      # Fraction of neurons to be recorded from
+        'N_scale'    :     .25,                                                      # Scaling factor for the number of neurons
+        'R_scale'    :     0.1,                                                      # Fraction of neurons to be recorded from
         'opt_run'    :   False,                                                      # Flag for optimizer run, run minimal settings
         'num_neurons': np.array([776, 47386, 3876, 2807, 6683, 70387, 9502, 5455,   # Number of neurons by population
                           2640, 20740, 2186, 1958, 410, 19839, 1869, 1869, 325]),
@@ -98,13 +98,15 @@ def setup():
     #######################################
     ## Background stimulation parameters ##
     #######################################
-    params['ext_rate']    = 2.3442979469040703
+    
+    
+    params['ext_rate']    = 0.5
     params['ext_nodes']   = np.array([1400, 1000, 1400, 1200, 1100, 1500, 1800, 1800, 1800, 1700, 1900, 1900, 1900, 2600, 2100, 2100, 2100])
-    params['ext_weights'] = [4.311124610575128, 
-                1.4665559306452935, 4.0181781127444625, 2.1542299864109644, 6.265895663424481, 
-                4.366433277087404, 4.014640121360436, 4.296509209462713, 1.2953587369362691, 
-                0.8636802481932396, 2.2859833676908963, 6.304064358324794, 6.198631164117885, 
-                6.914440202512495, 1.6023059555735448, 1.7889209987080614, 1.5831096761074437]
+    params['ext_weights'] = [3.50116807644665, 
+    6.336417664751055, 5.514928282091003, 7.0, 6.097252063605575, 
+    2.5195416197244715, 3.6646617933399432, 1e-24, 1.1040190824794214,
+    7.0, 2.6157287241319502, 2.056829948486045, 2.666098157712284, 
+    2.9453831508460953, 7.0, 1.7997850260998796, 2.1810249254192624]
     
     ## Write parameters to file so the network can read it in
     with open("params", 'wb') as f:

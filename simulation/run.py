@@ -33,7 +33,7 @@ def run_network():
     ########################
 
     nest.ResetKernel()
-    nest.local_num_threads = 1 ## adapt if necessary
+    nest.local_num_threads = 64 ## adapt if necessary
     nest.print_time = False
     resolution = 0.1
     nest.resolution = resolution
@@ -53,7 +53,6 @@ def run_network():
     num_neurons       = params['num_neurons']  * params['N_scale']
     ext_rates         = params['ext_nodes'] * params['ext_rate']
     
-    print(f"Running simulation with {ext_rates}")
     ########################
     ## Create the network ##
     ########################
