@@ -65,8 +65,8 @@ def optimize_network(optimizer):
     optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=True)
     
     optimizer.maximize(
-            init_points=30,
-            n_iter=200,
+            init_points=50,
+            n_iter=300,
             acquisition_function=uf
         )
     # best = None
@@ -117,3 +117,5 @@ if __name__ == '__main__':
     #with MPIPoolExecutor(max_workers=n_workers) as executor:
     params= optimize_network(optimizer)
     print(optimizer.max['params'])
+    with open("best_params", 'wb') as f:
+        pickle.dump(optimizer.max['params'], f)
