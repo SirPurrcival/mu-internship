@@ -139,7 +139,7 @@ class Network:
             delay = nest.math.redraw(nest.random.normal(
                 mean = 1.5,
                 std=abs(1.5*0.1)),
-                min=nest.resolution - 0.5 * nest.resolution,
+                min=nest.resolution, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
             
             
@@ -565,7 +565,7 @@ def get_synchrony(population, start, stop):
     mean_spike_count = np.mean(spike_counts)
     if mean_spike_count == 0:
         ## Penalize no firing rate more than high synchrony
-        return 2
+        return 10000
     var_spike_count = np.var(spike_counts)
     vm_ratio = var_spike_count / mean_spike_count
     return vm_ratio
@@ -588,13 +588,17 @@ def get_irregularity(population):
         Returns -1 if there is no data for that population
 
     """
-    try:
-        isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
-    except:
+    isi = [np.diff(np.sort(neuron)) for neuron in population]
+    cv  = [np.std(i) / np.mean(i) for i in isi if not np.isnan(np.std(i) / np.mean(i))]
+    # isi = list(itertools.chain(*population))
+    # isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
+    if len(cv) == 0:
         ## Penalize no firing rate harder than no irregularity
-        return -2
-    cv = np.std(isi) / np.mean(isi)
-    return cv if np.isfinite(cv) else np.nan
+        return 10000
+    
+    irregularity = np.mean(cv)
+
+    return irregularity
 
 def get_firing_rate(spike_times, start, stop):
     spikes_total = list(itertools.chain(*spike_times))
@@ -603,7 +607,7 @@ def get_firing_rate(spike_times, start, stop):
     
     ## Penalize silent populations
     if afr == 0:
-        return 20
+        return 10000
     
     return afr
 

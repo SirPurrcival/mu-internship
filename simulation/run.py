@@ -14,6 +14,7 @@ import nest
 from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 #import icsd
 import time
+from setup import setup
 
 import pickle
 
@@ -33,7 +34,7 @@ def run_network():
     ########################
 
     nest.ResetKernel()
-    nest.local_num_threads = 64 ## adapt if necessary
+    nest.local_num_threads = 32 ## adapt if necessary
     nest.print_time = False
     resolution = 0.1
     nest.resolution = resolution
@@ -220,8 +221,5 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-# params = setup()
-# params['ext_rate'] = nyan['ext_rate']
-# params['ext_nodes'] = np.array([nyan[x] for x in nyan if 'node' in x])
-# params['ext_weights'] = np.array([nyan[x] for x in nyan if 'weights' in x])
+# setup()
 nya = run_network()

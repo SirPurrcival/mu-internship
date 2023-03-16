@@ -21,7 +21,7 @@ def objective_function(**args):
     ## Change values and run the function with different parameters
     params['ext_rate'] = args['ext_rate']
     params['ext_weights'] = np.array([args[x] for x in args if 'weight' in x])
-    params['K_scale'] = args['K_scale']
+    #params['K_scale'] = args['K_scale']
 
     ## Write parameters to file so the network can read it in
     with open("params", 'wb') as f:
@@ -37,7 +37,7 @@ def objective_function(**args):
     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                cwd=cwd, env=env)
     return_code = process.wait()
-    # print("Script exited with return code:", return_code)
+    #print("Script exited with return code:", return_code)
     output, error = process.communicate()
     # print("Standard output:\n", output.decode())
     # print("Error output:\n", error.decode())
@@ -54,18 +54,19 @@ def objective_function(**args):
     
     ## Compute scores for how close to our target values we got this run
     scores = [(target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + (firing_rate[i] - target_firing_rate)**2 for i in list(range(len(irregularity)))]
-        
+    
+    print(f"Scores:\n {scores}")
     # Return the negative of the score since the Bayesian optimization maximizes the objective function
     return -np.mean(scores)
 
 def optimize_network(optimizer):
     
-    uf = UtilityFunction(kind = "ei", kappa = 1.96, xi = 0.01)
+    uf = UtilityFunction(kind = "ucb", kappa = 4, xi = 0.2) # xi = 0.01 , kappa = 1.96
     
     optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=True)
     
     optimizer.maximize(
-            init_points=50,
+            init_points=60,
             n_iter=300,
             acquisition_function=uf
         )
@@ -99,7 +100,6 @@ if __name__ == '__main__':
     for i in range(17):
         #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
         pbounds[f'pop{i}_weights'] = (1e-24, 7e0)
-    pbounds['K_scale'] = (0.15,1)
     
     # ## Define the Bayesian optimizer
     # optimizer = BayesianOptimization(
