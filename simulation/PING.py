@@ -139,4 +139,4 @@ plt.imshow(F, aspect='auto', cmap='coolwarm_r')
 
 plt.show()
 
-IPython.embed()
+#IPython.embed()
