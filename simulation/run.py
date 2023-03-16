@@ -221,5 +221,5 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-# setup()
+setup()
 nya = run_network()
