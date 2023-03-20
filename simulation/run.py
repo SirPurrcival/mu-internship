@@ -11,16 +11,16 @@ from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
-from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
+from functions import Network, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 #import icsd
 import time
-from setup import setup
+
 
 import pickle
 
 
 def run_network():
-    ## Load config
+    ## Load config created by setup()
     with open("params", 'rb') as f:
        params = pickle.load( f)
     
@@ -62,7 +62,6 @@ def run_network():
     ## Get the rank of the MPI process
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
-    n_workers = comm.Get_size()
     
     network = Network(resolution, params['rec_start'], params['rec_stop'])
     
@@ -211,6 +210,7 @@ def run_network():
                     print("All done!")
                 
                 newlst = np.array([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
+                
         irregularity = [get_irregularity(population) for population in spikes]
         firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spikes]
         synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spikes]
@@ -221,5 +221,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
+#from setup import setup
 #setup()
 nya = run_network()
