@@ -4,6 +4,8 @@ LABEL maintainer="s.graber@fz-juelich.de"
 ## Modified to include:
 # pydmd
 
+SHELL ["/bin/bash", "-c"]
+
 ARG WITH_MPI=ON
 ARG WITH_OMP=ON
 ARG WITH_GSL=ON
@@ -54,24 +56,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget  && \
     apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/* && \
-    # update-alternatives --remove-all python && \
+    #update-alternatives --remove-all python && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10 && \
     python3 -m pip install --upgrade pip setuptools wheel
 
 
 # Install music
-RUN wget https://github.com/INCF/MUSIC/archive/master.tar.gz && \
-    tar -zxf master.tar.gz && \
-    mkdir music-build music-install && \
-    cd MUSIC-master && \
-    sh ./autogen.sh && \
-    cd ../music-build && \
-    ../MUSIC-master/configure --prefix=/opt/music-install && \
-    make && \
-    make install && \
-    cd / && \
-    rm master.tar.gz
+#RUN wget https://github.com/INCF/MUSIC/archive/master.tar.gz && \
+#    tar -zxf master.tar.gz && \
+#    mkdir music-build music-install && \
+#    cd MUSIC-master && \
+#    sh ./autogen.sh && \
+#    cd ../music-build && \
+#    ../MUSIC-master/configure --prefix=/opt/music-install && \
+#    make && \
+#    make install && \
+#    cd / && \
+#    rm master.tar.gz
 
 # Install libneurosim
 # RUN git clone https://github.com/INCF/libneurosim.git libneurosim && \
@@ -87,7 +89,7 @@ RUN wget https://github.com/INCF/MUSIC/archive/master.tar.gz && \
 RUN git clone https://github.com/nest/nest-simulator.git && \
   cd nest-simulator && \
   git checkout master && \
-  python3 -m pip install -r ./extras/nest-simulator-doc-requirements.txt && \
+  python3 -m pip install -r ./doc/requirements.txt && \
   cd .. && \
   mkdir nest-build && \
   ls -l && \
@@ -104,10 +106,11 @@ RUN git clone https://github.com/nest/nest-simulator.git && \
         -Dwith-mpi=$WITH_MPI \
         -Dwith-openmp=$WITH_OMP \
         -Dwith-libneurosim=$WITH_LIBNEUROSIM \
-        -Dwith-music=/opt/music-install \
+#       -Dwith-music=/opt/music-install \
         ../nest-simulator && \
   make && \
-  make html && \
+  pip install setuptools==58.2.0 && \
+  source bin/nest_vars.sh && \
   make install
 
 ###############################################################################
@@ -143,7 +146,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-restrictedpython \
         python3-matplotlib \
         python3-mpi4py \
-        python3-numpy \
+        python-numpy \
         python3-pip \
         python3-scipy \
         python3-setuptools \
@@ -155,20 +158,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     rm -rf /var/lib/apt/lists/* && \
     update-alternatives --install /usr/bin/python python /usr/bin/python3 10 && \
     update-alternatives --install /usr/bin/pip pip /usr/bin/pip3 10 && \
-    pip install quantities lazyarray neo pydmd  && \
+    pip install quantities lazyarray neo pydmd bayesian-optimization mpi4py && \
     pip install uwsgi &&\
-    # wget https://github.com/NeuralEnsemble/PyNN/archive/nest-dev.tar.gz && \
-    # tar -xzf nest-dev.tar.gz && \
-    # cd PyNN-nest-dev && \
-    # python3 setup.py install && \
-    # cd .. && rm -rf PyNN-nest-dev && rm nest-dev.tar.gz
-    pip install --no-binary :all: PyNN
+     wget https://github.com/NeuralEnsemble/PyNN/archive/nest-dev.tar.gz && \
+     tar -xzf nest-dev.tar.gz && \
+     cd PyNN-nest-dev && \
+     python3 setup.py install && \
+     cd .. && rm -rf PyNN-nest-dev && rm nest-dev.tar.gz && \
+    #pip install --no-binary :all: PyNN
+     pip install numpy==1.23.1 && \
+     mkdir code && \
+     mkdir data
 
 COPY --from=buildermaster /opt/nest /opt/nest
-COPY --from=buildermaster /opt/music-install /opt/music-install
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY . /code
 
 EXPOSE 5000 8080
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && \
+        chmod +x /code/simulation/run.py
+
+
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+#ENTRYPOINT ["/bin/bash"]

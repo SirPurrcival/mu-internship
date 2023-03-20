@@ -139,7 +139,7 @@ class Network:
             delay = nest.math.redraw(nest.random.normal(
                 mean = 1.5,
                 std=abs(1.5*0.1)),
-                min=nest.resolution - 0.5 * nest.resolution,
+                min=nest.resolution, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
             
             
@@ -251,56 +251,75 @@ class Network:
             Contains a list with sorted spike times for each individual neuron
 
         """
-        
-        ## Get the data f rom the spike recorder
-        #self.spike_times = nest.GetStatus(self.spike_recorder)
-        
-        ## Data storage:
-        self.data = []
-        
-        ## Divide spike times to populations
-        for i in range(len(self.__spike_recorder)):
-            
-            self.spike_times = nest.GetStatus(self.__spike_recorder[i])
-            
-            #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
-            
-            
-            
-            
-            
-            ## Create a list containing empty lists with size equal to nrec of that population.
-            ## For each of those lists get the range of IDs from the population
-            ## The IDs are then lowest ID of the population + nrec
-            ## Fill in the data for the corresponding senders == IDs
-            ## => 
-            tmp = [[]] * self.__nrec[i]
-            IDs = list(self.__populations[i].get(['global_id']).values())[0]
-            mn = min(IDs)
-            mx = mn + self.__nrec[i]
-            
-            # times = []
-            # self.min = min(self.IDs)
-            # self.max = max(self.IDs)
-            
-            ## Get sender IDs and times (in ms)
-            self.senders = self.spike_times[0]['events']['senders']
-            self.times = self.spike_times[0]['events']['times']
-            
-            i = 0
-            for n in range(mn, mx+1):
-                tmp[0].append(self.times[self.senders == n])
-                i += 1
-            
-            self.data.append(tmp[0])
-            
+        ################################################
+        ## Get spike data
+        spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.__spike_recorder]
         ################################################
         ## Get multimeter data
-        mmlist = []
-        for d in self.__multimeter:
-            mmlist.append(nest.GetStatus(d)[0]["events"])
-            
-        return mmlist, self.data
+        mm_list = [nest.GetStatus(d)[0]['events'] for d in self.__multimeter]
+        
+        return mm_list, spike_list
+    
+def prep_spikes(spike_list, network):
+    ## Create a list containing empty lists with size equal to nrec of that population.
+    ## For each of those lists get the range of IDs from the population
+    ## The IDs are then lowest ID of the population + nrec
+    ## Fill in the data for the corresponding senders == IDs
+    ## => 
+    ## Data storage:
+    #nrec = [len(a['senders']) for a in spike_list]
+    data = []
+    pops = network.get_pops()
+    nrec = network.get_nrec()
+        
+    ## Divide spike times to populations
+    for i in range(len(pops)):
+        
+        spike_times = spike_list[i]
+        
+        #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+        
+        ## Create a list containing empty lists with size equal to nrec of that population.
+        ## For each of those lists get the range of IDs from the population
+        ## The IDs are then lowest ID of the population + nrec
+        ## Fill in the data for the corresponding senders == IDs
+        ## => 
+        tmp = [[]] * nrec[i]
+        IDs = list(pops[i].get(['global_id']).values())[0]
+        mn = min(IDs)
+        mx = mn + nrec[i]
+        
+        # times = []
+        # self.min = min(self.IDs)
+        # self.max = max(self.IDs)
+        
+        ## Get sender IDs and times (in ms)
+        senders = spike_times['senders']
+        times = spike_times['times']
+        
+        #print(f"times: {times}")
+        ## Sort to make the mask work
+        order = np.argsort(senders)
+        senders_sorted = np.array(senders)[order]
+        times_sorted = np.array(times)[order]
+        
+        i = 0
+        for n in range(mn, mx):
+            tmp[0].append(times_sorted[senders_sorted == n])
+            #print(f"min: {mn}\nmax: {mx}\nsenders: {min(senders)} to {max(senders)}")
+            i += 1
+        
+        
+        data.append(tmp[0])
+        
+    # import pickle
+    # with open("prepspikes_pre", 'wb') as f:
+    #     pickle.dump(spike_list, f)
+    # with open("prepspikes_post", 'wb') as f:
+    #     pickle.dump(data, f)
+    return data
+    
+    
 
 # Helper functions
 def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
@@ -391,11 +410,11 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
     
     plt.tight_layout(pad=1)
 
-    plt.savefig('raster.png')
-
+    plt.savefig('simresults/raster.png')
+  
 def rate(spikes, rec_start, rec_stop):
     """
-    Displays the average rate of spiking for the network in Hz.
+    Returns the average rate of spiking for the network in Hz.
     
     Parameters
     ----------
@@ -408,7 +427,8 @@ def rate(spikes, rec_start, rec_stop):
 
     Returns
     -------
-    None.
+    fr : float.
+        The mean firing rate of the network during the recorded period in Hz.
 
     """
     
@@ -419,13 +439,13 @@ def rate(spikes, rec_start, rec_stop):
         nrec_total += len(i)
 
     time_diff = (rec_stop - rec_start)/1000.
-    average_firing_rate = (len(spikes_total)
-                           /time_diff
-                           /(nrec_total))
-    print(f'Average firing rate: {average_firing_rate} Hz')
-    
+    fr = (len(spikes_total)
+          /time_diff
+          /(nrec_total))
+    print(f'Average firing rate: {fr} Hz')
+    return fr
 
-def approximate_lfp_timecourse(data, times, label):
+def approximate_lfp_timecourse(data, times):
     """
     This function calculates the approximated lfp timecourse for the current layer using the
     methodology from Mazzoni et al. (2015). Amplitude depends on the depth and location
@@ -436,9 +456,7 @@ def approximate_lfp_timecourse(data, times, label):
     ----------
     data : list
         Should contain the 'events' dictionaries for each neuronal population
-        of the current layer
-    times: list
-        Contains the timesteps in miliseconds
+        of the current layer and a label entry indicating excitatory ("E") or otherwise
     label: list
         Contains the label of each neuronal population in data indicating
         whether they are excitatory or inhibitory
@@ -450,20 +468,26 @@ def approximate_lfp_timecourse(data, times, label):
         for the current layer
 
     """
-    ## calculate a delay of 6ms depending on resolution
-    t = np.argwhere(times - min(times) >= 6)
-    t = t.reshape(t.shape[0],)
+    
+    
+    ## We are using a delay of 6ms in the excitatory populations to calculate the LFP
+    ## (See the Mazzoni paper)
+    ## Get the positions for the data used in the excitatory populations. Dependent on resolution
+    
+    delay = np.argwhere(times - min(times) >= 6)
+    delay = delay.reshape(delay.shape[0],)    
     
     ## initialize arrays that will contain the sums of excitatory and inhibitory currents
-    cin = np.zeros((len(t),))
-    cex = np.zeros((len(t),))
+    cin = np.zeros((len(delay),))
+    cex = np.zeros((len(delay),))
+
     
     ## Go through all different neuronal populations of the current layer
     for d in range(len(data)):
         ## get the relevant data for the population
         senders = np.array(data[d]["senders"])
         I_syn = np.array(data[d]["I_syn"])
-        l = label[d]
+        l = data[d]["label"]
         
         ## neuronal populations always have sequential IDs upon creation
         ## so we just need the first and last ID of the current population
@@ -472,47 +496,30 @@ def approximate_lfp_timecourse(data, times, label):
         
         ## get a list containing the synaptic current
         ## recordings per neuron
-        mmdata = []
-        for s in range(mn, mx+1):
-            mmdata.append( I_syn[senders == s] )
-        
+        ## Heaviest bottleneck right now: I'll get you a coffee if you have better ideas
+        mmdata = [I_syn[senders == s] for s in list(range(mn, mx+1))]
         
         ## The currents are already sorted by time, just
         ## sum them up at each point in time and save them in an array
-        currentsum = np.zeros(len(t))
+        csum = np.zeros(len(delay))
         if l == "E":
-            for i in range(min(t), max(t)+1):
-                tmpsum = 0
-                for n in mmdata:
-                    tmpsum += n[i]
-                currentsum[i-min(t)] = tmpsum
+            csum = np.array([sum(mmdata)[delay]])
         else:
-            for i in range(max(t)-min(t)+1):
-                tmpsum = 0
-                for n in mmdata:
-                    tmpsum += n[i]
-                currentsum[i] = tmpsum
+            csum = np.array([sum(mmdata)[delay - min(delay)]])
+        csum = csum.reshape(csum.shape[1],)
             
         ## Append to list. It now contains the sums of currents from each
         ## individual neuronal population
         if l == "E":
-            cex += currentsum
+            cex += csum
         else:
-            cin += currentsum
+            cin += csum
     
-    
-    ## Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
-    
-    normalized = cex - 1.65*cin 
-    normalized = normalized - np.mean(normalized)
-    ## normalize(cex - 1.65*cin)
-    
-    # for x in mmall:
-    #     for i in range(len(x)):
-    #         x[i] = normalize(x[i])
+    # Apply the formula: norm[sum(current_ex) - 1.65 * sum[current_inh]]
+    normalized = normalize(cex - 1.65*cin)
     
     ## return the normalized LFP timecourse.
-    return normalized#, mmall
+    return normalized
 
 def normalize(data):
     """
@@ -535,3 +542,97 @@ def normalize(data):
     normalized = (ms - np.min(ms))/np.ptp(ms)
     
     return normalized
+
+def get_isi(spike_times):
+    """
+    Calculates the interspike interval (isi) for all populations
+
+    Parameters
+    ----------
+    spike_times : list
+        A list containing the arrays of spike times for each population
+
+    Returns
+    -------
+    list
+        Returns a list of interspike intervalls
+
+    """
+    return [np.diff(x) if len(x) > 1 else [] for x in spike_times]
+
+def get_synchrony(population, start, stop):
+    spike_counts = np.histogram(np.concatenate(population), bins=np.arange(start, stop+3, 3))[0]
+    mean_spike_count = np.mean(spike_counts)
+    if mean_spike_count == 0:
+        ## Penalize no firing rate more than high synchrony
+        return 10000
+    var_spike_count = np.var(spike_counts)
+    vm_ratio = var_spike_count / mean_spike_count
+    return vm_ratio
+
+
+def get_irregularity(population):
+    """
+    Calculates an irregularity measure based on Potjans & Diesmann (2014)
+    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3920768/
+
+    Parameters
+    ----------
+    population : list
+        A list containing the arrays of spike times for each neuron in the population
+
+    Returns
+    -------
+    cv : float
+        A measure of irregularity, bounded between 0 and 1, where 1 is the highest and 0 the lowest.
+        Returns -1 if there is no data for that population
+
+    """
+    isi = [np.diff(np.sort(neuron)) for neuron in population]
+    cv  = [np.std(i) / np.mean(i) for i in isi if not np.isnan(np.std(i) / np.mean(i))]
+    # isi = list(itertools.chain(*population))
+    # isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
+    if len(cv) == 0:
+        ## Penalize no firing rate harder than no irregularity
+        return 10000
+    
+    irregularity = np.mean(cv)
+
+    return irregularity
+
+def get_firing_rate(spike_times, start, stop):
+    spikes_total = list(itertools.chain(*spike_times))
+    dt = (stop - start) / 1000
+    afr = len(spikes_total)/dt/len(spike_times)
+    
+    ## Penalize silent populations
+    if afr == 0:
+        return 10000
+    
+    return afr
+
+def join_results(simres):
+    """
+    Gathers and joins the results from the distributed simulation to be used in the rest of the script.
+
+    Parameters
+    ----------
+    simres : TYPE
+        DESCRIPTION.
+
+    Returns
+    -------
+    None.
+
+    """
+    # Determine the number of inner lists and dictionaries in each inner list
+    merged_dicts = [{k: [] for k in simres[0][0].keys()} for i in range(17)]
+
+    # Merge the dictionaries
+    for inner_list in simres:
+        for i, d in enumerate(inner_list):
+            for k, v in d.items():
+                merged_dicts[i][k].extend(v)
+                
+    return merged_dicts
+    
