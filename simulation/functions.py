@@ -633,8 +633,6 @@ def join_results(simres):
         for i, d in enumerate(inner_list):
             for k, v in d.items():
                 merged_dicts[i][k].extend(v)
-    # import pickle
-    # with open("join_results", 'wb') as f:
-    #     pickle.dump(simres, f)
+                
     return merged_dicts
     
