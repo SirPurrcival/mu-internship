@@ -8,7 +8,6 @@ import os
 
 def objective_function(**args):
     # Set the network parameters based on the input values
-    
     n_workers = 4
     
     params = setup()

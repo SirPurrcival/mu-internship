@@ -254,6 +254,7 @@ class Network:
         ################################################
         ## Get spike data
         spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.__spike_recorder]
+        
         ################################################
         ## Get multimeter data
         mm_list = [nest.GetStatus(d)[0]['events'] for d in self.__multimeter]
@@ -311,12 +312,6 @@ def prep_spikes(spike_list, network):
         
         
         data.append(tmp[0])
-        
-    # import pickle
-    # with open("prepspikes_pre", 'wb') as f:
-    #     pickle.dump(spike_list, f)
-    # with open("prepspikes_post", 'wb') as f:
-    #     pickle.dump(data, f)
     return data
     
     
@@ -414,7 +409,7 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
   
 def rate(spikes, rec_start, rec_stop):
     """
-    Returns the average rate of spiking for the network in Hz.
+    Returns the average rate of spiking for the entire network in Hz.
     
     Parameters
     ----------
@@ -561,11 +556,31 @@ def get_isi(spike_times):
     return [np.diff(x) if len(x) > 1 else [] for x in spike_times]
 
 def get_synchrony(population, start, stop):
+    """
+    Calculates a synchrony measure based on Potjans & Diesmann (2014)
+    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3920768/
+
+    Parameters
+    ----------
+    population : list
+        A list containing the arrays of spike times for each neuron in the population
+    start : int
+        Starting time in ms
+    stop : int
+        Stopping time in ms
+
+    Returns
+    -------
+    vm_ratio : float
+        A measure of synchrony based on Potjans & Diesmann
+        Returns -1 if there is no data for that population
+
+    """
     spike_counts = np.histogram(np.concatenate(population), bins=np.arange(start, stop+3, 3))[0]
     mean_spike_count = np.mean(spike_counts)
     if mean_spike_count == 0:
         ## Penalize no firing rate more than high synchrony
-        return 10000
+        return -1
     var_spike_count = np.var(spike_counts)
     vm_ratio = var_spike_count / mean_spike_count
     return vm_ratio
@@ -584,7 +599,7 @@ def get_irregularity(population):
     Returns
     -------
     cv : float
-        A measure of irregularity, bounded between 0 and 1, where 1 is the highest and 0 the lowest.
+        A measure of irregularity based on Potjans & Diesmann
         Returns -1 if there is no data for that population
 
     """
@@ -594,13 +609,17 @@ def get_irregularity(population):
     # isi = np.concatenate([np.diff(neuron) for neuron in population if len(neuron) > 1])
     if len(cv) == 0:
         ## Penalize no firing rate harder than no irregularity
-        return 10000
+        return -1
     
     irregularity = np.mean(cv)
 
     return irregularity
 
 def get_firing_rate(spike_times, start, stop):
+    """Calculates and returns the average firing rate of the given population and time frame.
+       Sets firing rate to 10 kHz if the population is silent during that time to penalize
+       the objective function."""
+       
     spikes_total = list(itertools.chain(*spike_times))
     dt = (stop - start) / 1000
     afr = len(spikes_total)/dt/len(spike_times)
@@ -617,12 +636,13 @@ def join_results(simres):
 
     Parameters
     ----------
-    simres : TYPE
-        DESCRIPTION.
+    simres : list
+        A list containing lists of dictionaries, every inner list containing the dictionaries of the results of all populations
+        of each part of the simulation
 
     Returns
     -------
-    None.
+    Merged results from the simulations
 
     """
     # Determine the number of inner lists and dictionaries in each inner list
