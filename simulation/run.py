@@ -14,7 +14,7 @@ import nest
 from functions import Network, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 #import icsd
 import time
-
+from prep_LFP_kernel import prep_LFP_kernel
 
 import pickle
 
@@ -36,8 +36,7 @@ def run_network():
     nest.ResetKernel()
     nest.local_num_threads = 32 ## adapt if necessary
     nest.print_time = False
-    resolution = 0.1
-    nest.resolution = resolution
+    nest.resolution = params['resolution']
 
     nest.overwrite_files = True
     ## Path relative to working directory
@@ -63,14 +62,14 @@ def run_network():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     
-    network = Network(resolution, params['rec_start'], params['rec_stop'])
+    network = Network(params['resolution'], params['rec_start'], params['rec_stop'])
     
     # Populations
     if params['verbose']:
         print(f"Time required for setup: {time.time() - st}")
         print("Populating network...")
     for i in range(len(params['layer_type'])):
-        network.addpop('glif_psc', int(num_neurons[i]), params['cell_type'][params['layer_type'][i]], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
+        network.addpop('glif_psc', params['layer_type'][i] , int(num_neurons[i]), params['cell_type'][params['layer_type'][i]], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
     
     ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
     #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale ## original
@@ -84,18 +83,31 @@ def run_network():
     #ext_rates = np.array([1500, 1200, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * relative_weight * 8 * Kscale
     
     # # add stimulation
+    if params['verbose']:
+        print(f"Time required to populate network: {time.time() - st}")
+        print("Adding stimulation...")
     for i in range(len(ext_rates)):
-        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=i, weight=params['ext_weights'][i])
+        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=params['layer_type'][i], weight=params['ext_weights'][i])
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
     if params['verbose']:
-        print(f"Time required to populate network: {time.time() - st}")
+        print(f"Time required for stimulation setup: {time.time() - st}")
         print("Connecting network...")
-    network.connect_all(connections, params['syn_type'], synaptic_strength)
+    
+    network.connect_all(params['layer_type'], connections, params['syn_type'], synaptic_strength)
+    
     if params['verbose']:
         print(f"Time required for connection setup: {time.time() - st}")
-        print("Done! Starting simulation...")
+        
+    
+    if params['calc_lfp']:
+        print("Preparing Kernels and building filters for LFP approximation...")
+        H_YX = prep_LFP_kernel(params)
+        network.create_fir_filters(H_YX, params)
+        print(f"Time required for LFP setup {time.time() - st}")
+    
+    print("Done! Starting simulation...")
     
     ## simulate
     network.simulate(params['sim_time'])
@@ -156,6 +168,13 @@ def run_network():
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
+                
+                
+                
+                print(network.multimeters)
+                
+                
+                
                 times = np.unique(mmdata[0]["times"])
                 
                 ## append labels to data
@@ -221,6 +240,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-#from setup import setup
-#setup()
+from setup import setup
+setup()
 nya = run_network()

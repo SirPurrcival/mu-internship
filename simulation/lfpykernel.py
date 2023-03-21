@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import h5py
 import scipy.signal as ss
-import example_network_parameters as params
 import example_network_methods as methods
 from lfpykernels import KernelApprox, GaussCylinderPotential, KernelApproxCurrentDipoleMoment
 from plotting import draw_lineplot, remove_axis_junk, annotate_subplot
@@ -14,8 +13,12 @@ from copy import deepcopy
 import neuron
 import nest
 from pynestml.frontend.pynestml_frontend import generate_nest_target
+
+from setup import setup
 #from pynestml.frontend.pynestml_frontend import to_nest, install_nest
 
+
+params = setup()
 
 plt.rcParams.update({
     'axes.xmargin': 0.01,
@@ -43,15 +46,15 @@ pset = dict(
 )
 
 TRANSIENT = 200  # ignore 1st 200 ms of simulation in analyses
-dt = params.networkParameters['dt']
-tstop = params.networkParameters['tstop']
+dt = params['resolution']
+tstop = params['sim_time']
 tau = 50  # time lag relative to spike for kernel predictions
 
 # Assumed average firing rate of presynaptic populations X
 mean_nu_X = dict(E=2.3, I=4.9)  # spikes/s
 
 # assumed typical postsynaptic potential for each population
-Vrest = -65. 
+Vrest = -70. 
 
 # presynaptic activation time
 t_X = TRANSIENT
@@ -76,7 +79,10 @@ generate_nest_target(input_path=input_path,
 # install_nest(target_path, nest_path)
 
 nest.set_verbosity("M_ALL")
-nest.Install(module_name)
+try:
+    nest.Install(module_name)
+except:
+    pass
 
 nest.ResetKernel()
 
@@ -106,10 +112,10 @@ weights = [[pset['weight_EE'], pset['weight_IE']],
 # along z-axis
 gauss_cyl_potential = GaussCylinderPotential(
     cell=None,
-    z=params.electrodeParameters['z'],
-    sigma=params.electrodeParameters['sigma'],
-    R=params.populationParameters['pop_args']['radius'],
-    sigma_z=params.populationParameters['pop_args']['scale'],
+    z=params['electrodeParameters']['z'],
+    sigma=params['electrodeParameters']['sigma'],
+    R=params['populationParameters']['pop_args']['radius'],
+    sigma_z=params['populationParameters']['pop_args']['scale'],
     )
 
 # set up recording of current dipole moments. 
@@ -120,14 +126,14 @@ current_dipole_moment = KernelApproxCurrentDipoleMoment(cell=None)
 
 # compute kernels for each pair of pre- and postsynaptic populations.
 # Iterate over presynaptic populations
-for i, (X, N_X) in enumerate(zip(params.population_names,
-                                 params.population_sizes)):
+for i, (X, N_X) in enumerate(zip(params['layer_type'],
+                                 [int(x) for x in params['num_neurons']*params['N_scale']])):
     # iterate over postsynaptic populations
     for j, (Y, N_Y, morphology) in enumerate(zip(params.population_names,
-                                                 params.population_sizes,
-                                                 params.morphologies)):
+                                                 [int(x) for x in params['num_neurons']*params['N_scale']],
+                                                 params['morphologies'])):
         # set up LFPy.NetworkCell parameters for postsynaptic units
-        cellParameters = deepcopy(params.cellParameters)
+        cellParameters = deepcopy(params['cellParameters'])
         cellParameters.update(dict(
             morphology=morphology,
             custom_fun=set_biophys,
@@ -138,29 +144,29 @@ for i, (X, N_X) in enumerate(zip(params.population_names,
         synapseParameters = [
             dict(weight=weights[ii][j],
                  syntype='Exp2Syn',
-                 **params.synapseParameters[ii][j])
-            for ii in range(len(params.population_names))]
+                 **params['synapseParameters'][ii][j])
+            for ii in range(len(params['layer_type']))]
         synapsePositionArguments = [
-            params.synapsePositionArguments[ii][j]
-            for ii in range(len(params.population_names))]
+            params['synapsePositionArguments'][ii][j]
+            for ii in range(len(params['layer_type']))]
 
         # Create KernelApprox object
         kernel = KernelApprox(
-            X=params.population_names,
+            X=params['layer_type'],
             Y=Y,
-            N_X=np.array(params.population_sizes),
+            N_X=np.array([int(x) for x in params['num_neurons']*params['N_scale']]),
             N_Y=N_Y,
-            C_YX=np.array(params.connectionProbability[i]),
+            C_YX=np.array(params['connectivity'][i]),
             cellParameters=cellParameters,
-            populationParameters=params.populationParameters['pop_args'],
-            multapseFunction=params.multapseFunction,
-            multapseParameters=[params.multapseArguments[ii][j] for ii in range(len(params.population_names))],
-            delayFunction=params.delayFunction,
-            delayParameters=[params.delayArguments[ii][j] for ii in range(len(params.population_names))],
+            populationParameters=params['populationParameters']['pop_args'],
+            multapseFunction=params['multapseFunction'],
+            multapseParameters=[params['multapseArguments'][ii][j] for ii in range(len(params['layer_type']))],
+            delayFunction=params['delayFunction'],
+            delayParameters=[params['delayArguments'][ii][j] for ii in range(len(params['layer_type']))],
             synapseParameters=synapseParameters,
             synapsePositionArguments=synapsePositionArguments,
-            extSynapseParameters=params.extSynapseParameters,
-            nu_ext=1000. / params.netstim_interval,
+            extSynapseParameters=params['extSynapseParameters'],
+            nu_ext=1000. / params['netstim_interval'],
             n_ext=pset['n_ext'][j],
             nu_X=mean_nu_X,
         )
@@ -325,7 +331,7 @@ class Network(object):
                     for h in H:
                         fir_filter_params += [dict(
                             N=h.size,  # filter order
-                            h=h,  # filter coefficients
+                            h=h,       # filter coefficients
                         )]
                     self.fir_filters[k][f'{Y}:{X}'] = nest.Create('fir_filter_nestml', 
                                                                   H.shape[0], 
