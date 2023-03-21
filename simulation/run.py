@@ -11,7 +11,7 @@ from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
-from functions import Network, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
+from functions import Network, plot_LFPs, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 #import icsd
 import time
 from prep_LFP_kernel import prep_LFP_kernel
@@ -57,6 +57,9 @@ def run_network():
     ## Create the network ##
     ########################
     
+    
+    
+    
     ## Start parallelization here?
     ## Get the rank of the MPI process
     comm = MPI.COMM_WORLD
@@ -100,14 +103,12 @@ def run_network():
     if params['verbose']:
         print(f"Time required for connection setup: {time.time() - st}")
         
-    
     if params['calc_lfp']:
         print("Preparing Kernels and building filters for LFP approximation...")
         H_YX = prep_LFP_kernel(params)
         network.create_fir_filters(H_YX, params)
         print(f"Time required for LFP setup {time.time() - st}")
-    
-    print("Done! Starting simulation...")
+        print("Done! Starting simulation...")
     
     ## simulate
     network.simulate(params['sim_time'])
@@ -168,8 +169,8 @@ def run_network():
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
-                
-                
+                pass
+                plot_LFPs(network, params, H_YX, num_neurons)
                 
                 print(network.multimeters)
                 

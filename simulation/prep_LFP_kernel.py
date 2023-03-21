@@ -26,7 +26,7 @@ def prep_LFP_kernel(params):
     
     
     # parameters
-    pset = dict(
+    params['pset'] = dict(
         weight_EE=0.00015,  # E to E connection weight
         weight_IE=0.00012,  # E to I
         weight_EI=0.0045,   # I to E
@@ -36,7 +36,6 @@ def prep_LFP_kernel(params):
         g_eff=True          # if True, account for the effective membrane time constants
     )
     
-    TRANSIENT = 200  # ignore 1st 200 ms of simulation in analyses
     dt = params['resolution']
     tau = 50  # time lag relative to spike for kernel predictions
     
@@ -67,7 +66,7 @@ def prep_LFP_kernel(params):
     Vrest = -70. 
     
     # presynaptic activation time
-    t_X = TRANSIENT
+    t_X = params['transient']
     
     # Compile and install NESTML FIR_filter.nestml model
     nestml_model_file = 'FIR_filter.nestml'
@@ -96,7 +95,7 @@ def prep_LFP_kernel(params):
     except:
         pass
     
-    nest.ResetKernel()
+    #nest.ResetKernel()
     
     # create kernels from multicompartment neuron network description
                     
@@ -104,18 +103,18 @@ def prep_LFP_kernel(params):
     H_YX = dict()
     
     # define biophysical membrane properties
-    if pset['biophys'] == 'frozen':
+    if params['pset']['biophys'] == 'frozen':
         set_biophys = [methods.set_frozen_hay2011, methods.make_cell_uniform]
-    elif pset['biophys'] == 'lin':
+    elif params['pset']['biophys'] == 'lin':
         set_biophys = [methods.set_Ih_linearized_hay2011, methods.make_cell_uniform]
     else:
         raise NotImplementedError
     
     # synapse max. conductance (function, mean, st.dev., min.):
-    E2E = pset['weight_EE']
-    E2I = pset['weight_EI']
-    I2E = pset['weight_IE']
-    I2I = pset['weight_II']
+    E2E = params['pset']['weight_EE']
+    E2I = params['pset']['weight_EI']
+    I2E = params['pset']['weight_IE']
+    I2I = params['pset']['weight_II']
     
     weights = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
                [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
@@ -207,7 +206,7 @@ def prep_LFP_kernel(params):
             H_YX['{}:{}'.format(Y, X)] = kernel.get_kernel(
                 probes=[gauss_cyl_potential, current_dipole_moment],
                 Vrest=Vrest, dt=dt, X=X, t_X=t_X, tau=tau,
-                g_eff=pset['g_eff'],
+                g_eff=params['pset']['g_eff'],
                 fir=True
             )
     return H_YX

@@ -4,16 +4,19 @@ import numpy as np
 import nest
 import itertools
 import random
+from matplotlib.gridspec import GridSpec
+from plotting import draw_lineplot, remove_axis_junk, annotate_subplot
+import scipy.signal as ss
 
 ## 
 # Create classes
 class Network:
     def __init__(self, resolution, rec_start, rec_stop):
-        self.__populations = {}
-        self.__multimeter = []
-        self.__spike_recorder = []
-        self.__labels = []
-        self.__nrec = []
+        self.populations = {}
+        self.multimeter = {}
+        self.spike_recorder = {}
+        self.labels = []
+        self.nrec = []
         self.rec_start = rec_start
         self.rec_stop = rec_stop
         self.resolution = resolution
@@ -50,7 +53,7 @@ class Network:
         if not isinstance(neuron_params, dict):
             neuron_params = random.choices(neuron_params, k=num_neurons)
         
-        self.__nrec.append(nrec)
+        self.nrec.append(nrec)
         
         ## Create the neuronal population
         newpop = nest.Create(neuron_type, num_neurons, neuron_params)
@@ -73,11 +76,11 @@ class Network:
             nest.Connect(mm, newpop[:nrec])
             
             ## append to list for data extraction later
-            self.__multimeter.append(mm)
-            self.__spike_recorder.append(sr)
+            self.multimeter[pop_name] = mm
+            self.spike_recorder[pop_name] = sr
         ## Add it to internal list of populations
-        self.__populations[pop_name] = newpop
-        self.__labels.append(label)
+        self.populations[pop_name] = newpop
+        self.labels.append(label)
     
     def connect(self, popone, poptwo, conn_specs, syn_specs):
         """
@@ -118,7 +121,7 @@ class Network:
         None.
 
         """
-        r = list(range(len(self.__populations)))
+        r = list(range(len(self.populations)))
         R = itertools.product(r, r)
         
         for x,y in R:
@@ -143,10 +146,10 @@ class Network:
                 max=np.Inf)
             
             
-            nest.Connect(self.__populations[names[x]],
-                         self.__populations[names[y]],
+            nest.Connect(self.populations[names[x]],
+                         self.populations[names[y]],
                          conn_spec = {'rule': 'fixed_indegree', 
-                                      'indegree': int(conn_specs[x, y] * len(self.__populations[names[x]]))},
+                                      'indegree': int(conn_specs[x, y] * len(self.populations[names[x]]))},
                          syn_spec = {"weight": weight, "delay": delay, "receptor_type": receptor_type})
         
                 
@@ -172,7 +175,7 @@ class Network:
         """
         stimulus = nest.Create(source['type'])
         stimulus.rate = source['rate']
-        nest.Connect(stimulus, self.__populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
+        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
                                                                                                 'weight': weight})
     
     def get_pops(self):
@@ -185,7 +188,7 @@ class Network:
             A list of node collections.
 
         """
-        return self.__populations
+        return self.populations
     
     def get_last_added_population(self):
         """
@@ -197,7 +200,7 @@ class Network:
             A nest node collection
 
         """
-        return self.__populations[-1]
+        return self.populations[-1]
     
     def simulate(self, t_sim):
         """
@@ -225,7 +228,7 @@ class Network:
             A list containing the labels indicating either excitatory or inhibitory populations.
 
         """
-        return self.__labels
+        return self.labels
     
     def get_nrec(self):
         """
@@ -233,11 +236,11 @@ class Network:
 
         Returns
         -------
-        __nrec : list
+        nrec : list
             List of integers
 
         """
-        return self.__nrec
+        return self.nrec
 
     def get_data(self):
         """
@@ -253,11 +256,11 @@ class Network:
         """
         ################################################
         ## Get spike data
-        spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.__spike_recorder]
+        spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.spike_recorder.values()]
         
         ################################################
         ## Get multimeter data
-        mm_list = [nest.GetStatus(d)[0]['events'] for d in self.__multimeter]
+        mm_list = [nest.GetStatus(d)[0]['events'] for d in self.multimeter.values()]
         
         return mm_list, spike_list
     
@@ -318,7 +321,7 @@ class Network:
         for k in keys:
             for i, X in enumerate(params['layer_type']):
                 for Y in params['layer_type']:
-                    nest.Connect(self.__populations[f'{X}'], 
+                    nest.Connect(self.populations[f'{X}'], 
                                  self.fir_filters[k][f'{Y}:{X}'], 
                                  syn_spec=dict(delay=params['resolution']))
         
@@ -347,7 +350,7 @@ def prep_spikes(spike_list, network):
         
         spike_times = spike_list[i]
         
-        #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+        #self.IDs = np.unique(nest.GetStatus(self.spike_recorder[i])[0]["events"]["senders"])
         
         ## Create a list containing empty lists with size equal to nrec of that population.
         ## For each of those lists get the range of IDs from the population
@@ -725,3 +728,262 @@ def join_results(simres):
                 
     return merged_dicts
     
+def get_spike_rate(times, params):
+    bins = (np.arange(params['transient'] / params['resolution'], params['sim_time'] / params['resolution'] + 1)
+            * params['resolution'] - params['resolution'] / 2)
+    hist, _ = np.histogram(times, bins=bins)
+    return bins, hist.astype(float)
+
+def get_mean_spike_rate(times, params):
+    times = times[times >= params['transient']]
+    return times.size /  (params['sim_time'] - params['transient']) * 1000
+
+def plot_LFPs(net, params, H_YX, num_neurons):
+    
+    
+    
+    tau = 50
+    # mean firing rates of "real" network populations
+    lif_mean_nu_X = dict()  # mean spike rates
+    lif_nu_X = dict()  # binned firing rate
+    for i, X in enumerate(params['layer_type']):
+        times = nest.GetStatus(net.spike_recorder[X])[0]['events']['times']
+        times = times[times >= params['transient']]
+
+        lif_mean_nu_X[X] = get_mean_spike_rate(times, params)
+        _, lif_nu_X[X] = get_spike_rate(times, params)
+
+
+    # draw spike-signal kernels (ignoring non-causal contributions which are zero)
+    fig = plt.figure(figsize=(16, 9))
+    # create subplots
+    gs = GridSpec(4, 17**2)
+    axes = np.array([[None] * 17**2] * 2, dtype=object)
+    for i in range(2):
+        for j in range(17**2):
+            if i == 0:
+                if j == 0:
+                    axes[i, j] = fig.add_subplot(gs[:3, j])
+                else:
+                    axes[i, j] = fig.add_subplot(gs[:3, j], sharey=axes[0, 0], sharex=axes[0, 0])
+            else:
+                if j == 0:
+                    axes[i, j] = fig.add_subplot(gs[3, j], sharex=axes[0, 0])
+                else:
+                    axes[i, j] = fig.add_subplot(gs[3, j], sharey=axes[1, 0], sharex=axes[0, 0])
+
+    vlims = np.zeros((2, 17**2))
+    for i, (X, N_X) in enumerate(zip(params['layer_type'],
+                                     [int(x) for x in params['num_neurons']*params['N_scale']])):
+        for j, (Y, N_Y, morphology) in enumerate(zip(params['layer_type'],
+                                                     [int(x) for x in params['num_neurons']*params['N_scale']],
+                                                     params['morphologies'])):
+
+            # plot responses, iterate over probes
+            for h, (unit, probe) in enumerate(
+                    zip(['mV', 'nAµm'],
+                        ['GaussCylinderPotential', 'KernelApproxCurrentDipoleMoment'])):
+                title = (
+                    r'$\breve{H}_\mathrm{%s %s}(\mathbf{r}, \tau)$'
+                    % (Y, X)
+                    )
+
+                if probe == 'KernelApproxCurrentDipoleMoment':
+                    scaling = 1E-4  # nAum --> nAcm unit conversion
+                    unit = 'nAcm'
+                elif probe == 'GaussCylinderPotential':
+                    scaling = 1E3  # mV --> uV unit conversion
+                    unit = r'µV'                
+                else:
+                    scaling = 1
+                ax = axes[h, i * 2 + j]
+                draw_lineplot(
+                    ax,
+                    H_YX['{}:{}'.format(Y, X)][probe] * scaling,
+                    dt=params['resolution'],
+                    T=(0, tau),
+                    scaling_factor=1.,
+                    vlimround=(None
+                               if vlims[h, i * 2 + j] == 0
+                               else vlims[h, i * 2 + j]),
+                    label=f"{params['pset']['biophys']}",
+                    scalebar=True,
+                    unit=unit,
+                    ylabels=True,
+                    color='k',
+                    ztransform=False
+                    )
+                if probe == 'KernelApproxCurrentDipoleMoment':
+                    ax.set_yticklabels(['$P_{}$'.format(x) for x in 'xyz'])
+                if h == 0:
+                    ax.set_title(title)
+                    ax.set_xlabel('')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                if (i * 2 + j) == 0:
+                    ax.set_ylabel(probe)
+                else:
+                    # ax.set_ylabel('')
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                ax.set_ylabel('')
+                if h == 1:
+                    ax.set_xlabel(r'$\tau$ (ms)')
+                    
+    # plot LIF-network spikes, spike rates, signal predictions
+    fig = plt.figure(figsize=(16, 12))
+    gs = GridSpec(5, 6, wspace=0.3)
+
+    ax = fig.add_subplot(gs[:-1, 0])
+    remove_axis_junk(ax)
+    annotate_subplot(ax, ncols=6, nrows=1, letter='A', linear_offset=0.02)
+
+    T = [4000, 4100]
+    for i, Y in enumerate(net.get_pops()):
+        times = nest.GetStatus(net.spike_recorder[Y])[0]['events']['times']
+        gids = nest.GetStatus(net.spike_recorder[Y])[0]['events']['senders']
+
+        gids = gids[times >= params['transient']]
+        times = times[times >= params['transient']]
+
+        ii = (times >= T[0]) & (times <= T[1])
+        ax.plot(times[ii], gids[ii], '.',
+                mfc='C{}'.format(i),
+                mec='w',
+                label=r'$\langle \nu_\mathrm{%s} \rangle =%.2f$ s$^{-1}$' % (
+                    Y, lif_mean_nu_X[Y] / int(num_neurons[i]))
+               )
+    ax.legend(loc=1)
+    ax.axis('tight')
+    ax.set_xticklabels([])
+    ax.set_ylabel('gid', labelpad=0)
+
+
+    #####
+    # Rates
+    ####
+    ax = fig.add_subplot(gs[-1, 0])
+    remove_axis_junk(ax)
+
+    Delta_t = params['resolution']
+    bins = np.linspace(T[0], T[1], int(np.diff(T) / Delta_t + 1))
+
+    for i, Y in enumerate(net.get_pops()):
+        times = nest.GetStatus(net.spike_recorder[Y])[0]['events']['times']
+
+        ii = (times >= T[0]) & (times <= T[1])
+        ax.hist(times[ii], bins=bins, histtype='step')
+
+    ax.axis('tight')
+    ax.set_xlabel('t (ms)', labelpad=0)
+    ax.set_ylabel(r'$\nu_X$ (spikes/$\Delta t$)', labelpad=0)
+
+
+    # contributions by each connection:
+    for k, (ylabel, probe, unit, vlimround) in enumerate(zip(
+        [r'$V_\mathrm{e}$', r'$\mathbf{P}$'],
+        ['GaussCylinderPotential', 'KernelApproxCurrentDipoleMoment'],
+        ['mV', 'nAµm'],
+        [2**-1, 2**4])):
+
+        if probe == 'KernelApproxCurrentDipoleMoment':
+            scaling = 1E-4  # nAum --> nAcm unit conversion
+            unit = 'nAcm'
+        else:
+            scaling = 1
+        
+        data = None
+        data_mm = None
+                
+        for i, X in enumerate(params['layer_type']):
+            for j, Y in enumerate(params['layer_type']):
+                if k == 0:
+                    ax = fig.add_subplot(gs[:-1, i * 2  + j + 1])
+                    annotate_subplot(ax, ncols=6, nrows=1, letter='ABCDE'[i * 2 + j + 1], linear_offset=0.02)
+                else:
+                    ax = fig.add_subplot(gs[-1, i * 2 + j + 1])
+                
+
+                data_YX = np.zeros((H_YX['{}:{}'.format(Y, X)][probe].shape[0],
+                                    lif_nu_X[X].size))
+                if data is None:
+                    data = np.zeros((H_YX['{}:{}'.format(Y, X)][probe].shape[0],
+                                     lif_nu_X[X].size))
+                for h, h_YX in enumerate(H_YX['{}:{}'.format(Y, X)][probe]):
+                    data_YX[h, :] = np.convolve(lif_nu_X[X], h_YX, 'same')
+
+
+                data = data + data_YX
+                
+
+                # FIR filter responses in NEST:
+                [mm_YX] = nest.GetStatus(net.multimeters[probe][f'{Y}:{X}'], 'events')
+                for ii, sender in enumerate(np.unique(mm_YX['senders'])):
+                    inds = mm_YX['senders'] == sender
+                    if ii == 0:
+                        d = ss.decimate(mm_YX['y'][inds][int(params['transient'] / params['resolution']):], 
+                                        q=16, zero_phase=True)
+                    else:
+                        d = np.row_stack((d, ss.decimate(mm_YX['y'][inds][int(params['transient'] / params['resolution']):], 
+                                                         q=16, zero_phase=True)))
+                if data_mm is None:
+                    data_mm = d
+                else:
+                    data_mm += d
+                
+                draw_lineplot(ax,
+                              d * scaling,
+                              dt=params['resolution'] * 16,
+                              T=T,
+                              scaling_factor=1.,
+                              # vlimround=vlimround,
+                              label='',
+                              scalebar=True,
+                              unit=unit,
+                              ylabels=True,
+                              color='k',
+                              ztransform=True
+                              )
+                
+
+                if probe == 'KernelApproxCurrentDipoleMoment':
+                    ax.set_yticklabels(['$P_x$', '$P_y$', '$P_z$'])
+
+                if i * 2  + j > 0:
+                    plt.setp(ax.get_yticklabels(), visible=False)
+                if k == 0:
+                    ax.set_title(r'$\nu_{%s} \ast \breve{H}_\mathrm{%s%s}$' % (X, Y, X))
+                    ax.set_xlabel('')
+                    plt.setp(ax.get_xticklabels(), visible=False)
+                ax.set_ylabel('')
+                    
+        # sum
+        if k == 0:
+            ax = fig.add_subplot(gs[:-1, -1])
+            annotate_subplot(ax, ncols=6, nrows=1, letter='F', linear_offset=0.02)
+
+        else:
+            ax = fig.add_subplot(gs[-1, -1])
+        
+
+        draw_lineplot(ax,
+                      data_mm * scaling,
+                      dt=params['resolution'] * 16,
+                      T=T,
+                      scaling_factor=1.,
+                      # vlimround=vlimround,
+                      label='',
+                      scalebar=True,
+                      unit=unit,
+                      ylabels=True,
+                      color='k',
+                      ztransform=True
+                      )
+        
+        plt.setp(ax.get_yticklabels(), visible=False)
+        if k == 0:
+            ax.set_title(r'$\sum_X \sum_Y \nu_X \ast \breve{H}_\mathrm{YX}$')
+            ax.set_xlabel('')
+            plt.setp(ax.get_xticklabels(), visible=False)
+        ax.set_ylabel('')
+
+        if probe == 'KernelApproxCurrentDipoleMoment':
+            ax.set_yticklabels(['$P_x$', '$P_y$', '$P_z$'])

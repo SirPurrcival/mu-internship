@@ -26,6 +26,7 @@ def setup():
         'R_scale'    :     0.1,                                                     # Fraction of neurons to be recorded from
         'opt_run'    :   False,                                                     # Flag for optimizer run, run minimal settings
         'resolution' :   2**-3,                                                         # Resolution of the simulaton
+        'transient'  :     200,                                                     # Ignore the first x ms of the simulation
         'num_neurons': np.array([776, 47386, 3876, 2807, 6683, 70387, 9502, 5455,   # Number of neurons by population
                           2640, 20740, 2186, 1958, 410, 19839, 1869, 1869, 325]),
         'E_I'        : ['I','E','I','I','I','E','I','I','I','E','I',   # Label for the populations
