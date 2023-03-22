@@ -273,7 +273,6 @@ class Network:
         ----------
         kernels: nested dict
         """
-        print(H_YX)
         num_neurons = [int(x) for x in params['num_neurons']*params['N_scale']]
         keys = list(H_YX[f"{params['layer_type'][0]}:{params['layer_type'][0]}"].keys())
         n_kernels = len(keys)
@@ -754,79 +753,79 @@ def plot_LFPs(net, params, H_YX, num_neurons):
         _, lif_nu_X[X] = get_spike_rate(times, params)
 
 
-    # draw spike-signal kernels (ignoring non-causal contributions which are zero)
-    fig = plt.figure(figsize=(16, 9))
-    # create subplots
-    gs = GridSpec(4, 17**2)
-    axes = np.array([[None] * 17**2] * 2, dtype=object)
-    for i in range(2):
-        for j in range(17**2):
-            if i == 0:
-                if j == 0:
-                    axes[i, j] = fig.add_subplot(gs[:3, j])
-                else:
-                    axes[i, j] = fig.add_subplot(gs[:3, j], sharey=axes[0, 0], sharex=axes[0, 0])
-            else:
-                if j == 0:
-                    axes[i, j] = fig.add_subplot(gs[3, j], sharex=axes[0, 0])
-                else:
-                    axes[i, j] = fig.add_subplot(gs[3, j], sharey=axes[1, 0], sharex=axes[0, 0])
+    # # draw spike-signal kernels (ignoring non-causal contributions which are zero)
+    # fig = plt.figure(figsize=(16, 9))
+    # # create subplots
+    # gs = GridSpec(4, 17**2)
+    # axes = np.array([[None] * 17**2] * 2, dtype=object)
+    # for i in range(2):
+    #     for j in range(17**2):
+    #         if i == 0:
+    #             if j == 0:
+    #                 axes[i, j] = fig.add_subplot(gs[:3, j])
+    #             else:
+    #                 axes[i, j] = fig.add_subplot(gs[:3, j], sharey=axes[0, 0], sharex=axes[0, 0])
+    #         else:
+    #             if j == 0:
+    #                 axes[i, j] = fig.add_subplot(gs[3, j], sharex=axes[0, 0])
+    #             else:
+    #                 axes[i, j] = fig.add_subplot(gs[3, j], sharey=axes[1, 0], sharex=axes[0, 0])
 
-    vlims = np.zeros((2, 17**2))
-    for i, (X, N_X) in enumerate(zip(params['layer_type'],
-                                     [int(x) for x in params['num_neurons']*params['N_scale']])):
-        for j, (Y, N_Y, morphology) in enumerate(zip(params['layer_type'],
-                                                     [int(x) for x in params['num_neurons']*params['N_scale']],
-                                                     params['morphologies'])):
+    # vlims = np.zeros((2, 17**2))
+    # for i, (X, N_X) in enumerate(zip(params['layer_type'],
+    #                                  [int(x) for x in params['num_neurons']*params['N_scale']])):
+    #     for j, (Y, N_Y, morphology) in enumerate(zip(params['layer_type'],
+    #                                                  [int(x) for x in params['num_neurons']*params['N_scale']],
+    #                                                  params['morphologies'])):
 
-            # plot responses, iterate over probes
-            for h, (unit, probe) in enumerate(
-                    zip(['mV', 'nAµm'],
-                        ['GaussCylinderPotential', 'KernelApproxCurrentDipoleMoment'])):
-                title = (
-                    r'$\breve{H}_\mathrm{%s %s}(\mathbf{r}, \tau)$'
-                    % (Y, X)
-                    )
+    #         # plot responses, iterate over probes
+    #         for h, (unit, probe) in enumerate(
+    #                 zip(['mV', 'nAµm'],
+    #                     ['GaussCylinderPotential', 'KernelApproxCurrentDipoleMoment'])):
+    #             title = (
+    #                 r'$\breve{H}_\mathrm{%s %s}(\mathbf{r}, \tau)$'
+    #                 % (Y, X)
+    #                 )
 
-                if probe == 'KernelApproxCurrentDipoleMoment':
-                    scaling = 1E-4  # nAum --> nAcm unit conversion
-                    unit = 'nAcm'
-                elif probe == 'GaussCylinderPotential':
-                    scaling = 1E3  # mV --> uV unit conversion
-                    unit = r'µV'                
-                else:
-                    scaling = 1
-                ax = axes[h, i * 2 + j]
-                draw_lineplot(
-                    ax,
-                    H_YX['{}:{}'.format(Y, X)][probe] * scaling,
-                    dt=params['resolution'],
-                    T=(0, tau),
-                    scaling_factor=1.,
-                    vlimround=(None
-                               if vlims[h, i * 2 + j] == 0
-                               else vlims[h, i * 2 + j]),
-                    label=f"{params['pset']['biophys']}",
-                    scalebar=True,
-                    unit=unit,
-                    ylabels=True,
-                    color='k',
-                    ztransform=False
-                    )
-                if probe == 'KernelApproxCurrentDipoleMoment':
-                    ax.set_yticklabels(['$P_{}$'.format(x) for x in 'xyz'])
-                if h == 0:
-                    ax.set_title(title)
-                    ax.set_xlabel('')
-                    plt.setp(ax.get_xticklabels(), visible=False)
-                if (i * 2 + j) == 0:
-                    ax.set_ylabel(probe)
-                else:
-                    # ax.set_ylabel('')
-                    plt.setp(ax.get_yticklabels(), visible=False)
-                ax.set_ylabel('')
-                if h == 1:
-                    ax.set_xlabel(r'$\tau$ (ms)')
+    #             if probe == 'KernelApproxCurrentDipoleMoment':
+    #                 scaling = 1E-4  # nAum --> nAcm unit conversion
+    #                 unit = 'nAcm'
+    #             elif probe == 'GaussCylinderPotential':
+    #                 scaling = 1E3  # mV --> uV unit conversion
+    #                 unit = r'µV'                
+    #             else:
+    #                 scaling = 1
+    #             ax = axes[h, i * 2 + j]
+    #             draw_lineplot(
+    #                 ax,
+    #                 H_YX['{}:{}'.format(Y, X)][probe] * scaling,
+    #                 dt=params['resolution'],
+    #                 T=(0, tau),
+    #                 scaling_factor=1.,
+    #                 vlimround=(None
+    #                            if vlims[h, i * 2 + j] == 0
+    #                            else vlims[h, i * 2 + j]),
+    #                 label=f"{params['pset']['biophys']}",
+    #                 scalebar=True,
+    #                 unit=unit,
+    #                 ylabels=True,
+    #                 color='k',
+    #                 ztransform=False
+    #                 )
+    #             if probe == 'KernelApproxCurrentDipoleMoment':
+    #                 ax.set_yticklabels(['$P_{}$'.format(x) for x in 'xyz'])
+    #             if h == 0:
+    #                 ax.set_title(title)
+    #                 ax.set_xlabel('')
+    #                 plt.setp(ax.get_xticklabels(), visible=False)
+    #             if (i * 2 + j) == 0:
+    #                 ax.set_ylabel(probe)
+    #             else:
+    #                 # ax.set_ylabel('')
+    #                 plt.setp(ax.get_yticklabels(), visible=False)
+    #             ax.set_ylabel('')
+    #             if h == 1:
+    #                 ax.set_xlabel(r'$\tau$ (ms)')
                     
     # plot LIF-network spikes, spike rates, signal predictions
     fig = plt.figure(figsize=(16, 12))

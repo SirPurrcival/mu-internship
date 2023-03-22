@@ -103,11 +103,13 @@ def run_network():
     if params['verbose']:
         print(f"Time required for connection setup: {time.time() - st}")
         
+    ## Prepare LFP kernels if we care about LFPs this run
     if params['calc_lfp']:
         print("Preparing Kernels and building filters for LFP approximation...")
         H_YX = prep_LFP_kernel(params)
         network.create_fir_filters(H_YX, params)
         print(f"Time required for LFP setup {time.time() - st}")
+    if params['verbose']:
         print("Done! Starting simulation...")
     
     ## simulate
@@ -169,12 +171,10 @@ def run_network():
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
-                pass
-                plot_LFPs(network, params, H_YX, num_neurons)
                 
                 print(network.multimeters)
                 
-                
+                plot_LFPs(network, params, H_YX, num_neurons)                
                 
                 times = np.unique(mmdata[0]["times"])
                 
@@ -241,6 +241,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-from setup import setup
-setup()
+#from setup import setup
+#setup()
 nya = run_network()

@@ -18,7 +18,7 @@ def setup():
         'rec_start'  :   200.,                                                      # start point for data recording
         'rec_stop'   :   400.,                                                      # end points for data recording
         'sim_time'   :   500.,                                                      # Time the network is simulated in ms
-        'calc_lfp'   :  True,                                                      # Flag to use LFP approximation procedure
+        'calc_lfp'   :  False,                                                      # Flag to use LFP approximation procedure
         'verbose'    :  True,                                                       # Flag for verbose function output
         'K_scale'    :     1.,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
@@ -114,13 +114,13 @@ def setup():
     # 1e-24, 3.2543403859854227, 0.641944589590017, 2.1834687407340443,
     # 7.0, 1e-24, 2.986536780670069, 0.5803055054744614
     
-    params['ext_rate']    = 4.6735191217570061
+    params['ext_rate']    = 5.3735191217570061
     params['ext_nodes']   = np.array([140, 100, 140, 120, 110, 150, 180, 180, 180, 170, 190, 190, 190, 260, 210, 210, 210])
-    params['ext_weights'] = [3.7965744951318477, 
-                             7.762524932070633, 12.818597965224434, 5.947184199171211, 3.8553839597064073, 
+    params['ext_weights'] = [4.7965744951318477, 
+                             7.762524932070633, 12.818597965224434, 5.947184199171211, 3.3553839597064073, 
                              2.95422324169895, 7.841405598126207, 4.897362276797087, 2.127810123924406, 
                              3.2981009467815937, 3.38233409130867667, 2.0180440299163823, 1.444171890699541, 
-                             5.360764434899142, 4.92695472801618, 3.137543770653454, 3.366822560118546]
+                             5.260764434899142, 4.92695472801618, 3.137543770653454, 3.366822560118546]
     
     ## Old 0.15 K values
     # [3.7965744951318477, 
