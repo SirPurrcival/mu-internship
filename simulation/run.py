@@ -65,7 +65,7 @@ def run_network():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     
-    network = Network(params['resolution'], params['rec_start'], params['rec_stop'])
+    network = Network(params) #params['resolution'], params['rec_start'], params['rec_stop'], params['g'])
     
     # Populations
     if params['verbose']:
@@ -241,6 +241,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-#from setup import setup
-#setup()
+from setup import setup
+setup()
 nya = run_network()

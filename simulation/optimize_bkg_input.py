@@ -38,8 +38,8 @@ def objective_function(**args):
     return_code = process.wait()
     #print("Script exited with return code:", return_code)
     output, error = process.communicate()
-    # print("Standard output:\n", output.decode())
-    # print("Error output:\n", error.decode())
+    #print("Standard output:\n", output.decode())
+    #print("Error output:\n", error.decode())
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:

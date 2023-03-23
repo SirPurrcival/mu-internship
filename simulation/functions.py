@@ -11,15 +11,17 @@ import scipy.signal as ss
 ## 
 # Create classes
 class Network:
-    def __init__(self, resolution, rec_start, rec_stop):
+    def __init__(self, p):
         self.populations = {}
         self.multimeter = {}
         self.spike_recorder = {}
         self.labels = []
         self.nrec = []
-        self.rec_start = rec_start
-        self.rec_stop = rec_stop
-        self.resolution = resolution
+        self.g = p['g']
+        self.rec_start = p['rec_start']
+        self.rec_stop = p['rec_stop']
+        self.resolution = p['resolution']
+        self.opt = p['opt_run']
 
     def addpop(self, neuron_type, pop_name ,num_neurons, neuron_params, label, 
                record_from_pop=True, nrec=0.):
@@ -61,22 +63,31 @@ class Network:
         if record_from_pop:
             ## Create recording devices
             sr = nest.Create("spike_recorder")
-            mm = nest.Create("multimeter",
+            
+            ## Only record if necessary
+            if not self.opt:
+                mm = nest.Create("multimeter",
                              params={"interval": self.resolution,
                              "record_from": ["I_syn"]})
+                
+                ## Set start/stop times
+                mm.start = self.rec_start
+                mm.stop = self.rec_stop
+                
+                ## Connect devices to the new population
+                nest.Connect(mm, newpop[:nrec])
+                
+                ## append to dictionary for data extraction later
+                self.multimeter[pop_name] = mm
             
             ## Set start/stop times
             sr.start = self.rec_start
             sr.stop = self.rec_stop
-            mm.start = self.rec_start
-            mm.stop = self.rec_stop
             
             ## Connect devices to the new population
             nest.Connect(newpop[:nrec], sr)
-            nest.Connect(mm, newpop[:nrec])
             
-            ## append to list for data extraction later
-            self.multimeter[pop_name] = mm
+            ## append to dictionary for data extraction later
             self.spike_recorder[pop_name] = sr
         ## Add it to internal list of populations
         self.populations[pop_name] = newpop
@@ -145,7 +156,9 @@ class Network:
                 min=nest.resolution*3, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
             
-            
+            if synapse_type[x,y] != "E":
+                weight *= self.g
+                
             nest.Connect(self.populations[names[x]],
                          self.populations[names[y]],
                          conn_spec = {'rule': 'fixed_indegree', 
@@ -259,8 +272,11 @@ class Network:
         spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.spike_recorder.values()]
         
         ################################################
-        ## Get multimeter data
-        mm_list = [nest.GetStatus(d)[0]['events'] for d in self.multimeter.values()]
+        ## Get multimeter data if needed
+        if not self.opt:
+            mm_list = [nest.GetStatus(d)[0]['events'] for d in self.multimeter.values()]
+        else:
+            mm_list = []
         
         return mm_list, spike_list
     
