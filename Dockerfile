@@ -192,7 +192,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      mkdir code && \
      mkdir data
 
-COPY --from=buildermaster /opt/nest /opt/nest
+COPY --from=buildermaster /opt /opt
 
 COPY . /code
 

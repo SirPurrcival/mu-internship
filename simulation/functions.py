@@ -17,7 +17,7 @@ class Network:
         self.spike_recorder = {}
         self.labels = []
         self.nrec = []
-        self.g = p['g']
+        # self.g = p['g']
         self.rec_start = p['rec_start']
         self.rec_stop = p['rec_stop']
         self.resolution = p['resolution']
@@ -156,8 +156,8 @@ class Network:
                 min=nest.resolution*3, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
             
-            if synapse_type[x,y] != "E":
-                weight *= self.g
+            # if synapse_type[x,y] != "E":
+            #     weight *= self.g
                 
             nest.Connect(self.populations[names[x]],
                          self.populations[names[y]],

@@ -2,9 +2,9 @@ from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi
 import numpy as np
 import pickle
 import scipy.stats as st
-#import neuron
-#from LFPy import NetworkCell
-#from example_network_methods import set_active_hay2011 as set_active
+import neuron
+from LFPy import NetworkCell
+from example_network_methods import set_active_hay2011 as set_active
 
 
 
@@ -22,9 +22,9 @@ def setup():
         'verbose'    :  True,                                                       # Flag for verbose function output
         'K_scale'    :     1.,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
-        'N_scale'    :     .5,                                                      # Scaling factor for the number of neurons
+        'N_scale'    :     .1,                                                      # Scaling factor for the number of neurons
         'R_scale'    :     0.1,                                                     # Fraction of neurons to be recorded from
-        'opt_run'    :   True,                                                     # Flag for optimizer run, run minimal settings
+        'opt_run'    :   False,                                                      # Flag for optimizer run, run minimal settings
         'g'          :      4.,                                                     # Excitation-Inhibition balance
         'resolution' :   2**-3,                                                         # Resolution of the simulaton
         'transient'  :     200,                                                     # Ignore the first x ms of the simulation
