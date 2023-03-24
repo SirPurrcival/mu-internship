@@ -8,7 +8,7 @@ import os
 
 def objective_function(**args):
     # Set the network parameters based on the input values
-    n_workers = 4
+    n_workers = 8
     
     params = setup()
     ## Set the amount of analysis done during runtime. Minimize stuff done
@@ -36,10 +36,10 @@ def objective_function(**args):
     process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                cwd=cwd, env=env)
     return_code = process.wait()
-    #print("Script exited with return code:", return_code)
+    print("Script exited with return code:", return_code)
     output, error = process.communicate()
-    #print("Standard output:\n", output.decode())
-    #print("Error output:\n", error.decode())
+    print("Standard output:\n", output.decode())
+    print("Error output:\n", error.decode())
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:
@@ -98,7 +98,7 @@ if __name__ == '__main__':
     pbounds['ext_rate'] = (0.5, 8)
     for i in range(17):
         #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
-        pbounds[f'pop{i}_weights'] = (1e-24, 7e0)
+        pbounds[f'pop{i}_weights'] = (1e-24, 14e0)
     
     # ## Define the Bayesian optimizer
     # optimizer = BayesianOptimization(

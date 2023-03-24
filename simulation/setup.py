@@ -114,7 +114,7 @@ def setup():
     # 7.0, 1e-24, 2.986536780670069, 0.5803055054744614
     
     params['ext_rate']    = 5.3735191217570061
-    params['ext_nodes']   = np.array([140, 100, 140, 120, 110, 150, 180, 180, 180, 170, 190, 190, 190, 260, 210, 210, 210])
+    params['ext_nodes']   = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500])
     params['ext_weights'] = [4.7965744951318477, 
                              7.762524932070633, 12.818597965224434, 5.947184199171211, 3.3553839597064073, 
                              2.95422324169895, 7.841405598126207, 4.897362276797087, 2.127810123924406, 
@@ -127,9 +127,8 @@ def setup():
     #                          2.95422324169895, 7.841405598126207, 4.897362276797087, 2.127810123924406, 
     #                          3.2981009467815937, 3.38233409130867667, 2.0180440299163823, 1.444171890699541, 
     #                          5.360764434899142, 4.92695472801618, 3.137543770653454, 3.366822560118546]
-    ## REACTIVATE FOR LFP STUFF
-    # if params['calc_lfp']:
-    #     params = prep_LFP_approximation(params)
+    if params['calc_lfp']:
+        params = prep_LFP_approximation(params)
     
     
     ## Write parameters to file so the network can read it in
@@ -137,255 +136,249 @@ def setup():
         pickle.dump(params, f)
     return params
 
-# def prep_LFP_approximation(params):
-        
-    
-#     # testing flag. If True, run with downsized network w. dense connectivity
-#     TESTING = False
-    
-    
-#     # class NetworkCell parameters:
-#     params['cellParameters'] = dict(
-#         # morphology='BallAndStick.hoc',  # set by main simulation
-#         templatefile='BallAndSticksTemplate.hoc',
-#         templatename='BallAndSticksTemplate',
-#         custom_fun=[set_active],
-#         custom_fun_args=[dict(Vrest=-65.)],  # [dict(Vrest=Vrest)] set at runtime
-#         templateargs=None,
-#         delete_sections=False,
-#     )
+def prep_LFP_approximation(params):
+    # class NetworkCell parameters:
+    params['cellParameters'] = dict(
+        # morphology='BallAndStick.hoc',  # set by main simulation
+        templatefile='BallAndSticksTemplate.hoc',
+        templatename='BallAndSticksTemplate',
+        custom_fun=[set_active],
+        custom_fun_args=[dict(Vrest=-65.)],  # [dict(Vrest=Vrest)] set at runtime
+        templateargs=None,
+        delete_sections=False,
+    )
     
     
-#     # class NetworkPopulation parameters:
-#     params['populationParameters'] = dict(
-#         Cell=NetworkCell,
-#         cell_args=params['cellParameters'],
-#         pop_args=dict(
-#             radius=150.,  # population radius
-#             loc=0.,  # population center along z-axis
-#             scale=75.),  # standard deviation along z-axis
-#         rotation_args=dict(x=0., y=0.))
+    # class NetworkPopulation parameters:
+    params['populationParameters'] = dict(
+        Cell=NetworkCell,
+        cell_args=params['cellParameters'],
+        pop_args=dict(
+            radius=150.,  # population radius
+            loc=0.,  # population center along z-axis
+            scale=75.),  # standard deviation along z-axis
+        rotation_args=dict(x=0., y=0.))
     
-#     # class Network parameters:
-#     params['networkParameters'] = dict(
-#         v_init=-70.,  # initial membrane voltage for all cells (mV)
-#         celsius=34,  # simulation temperature (deg. C)
-#         # OUTPUTPATH=OUTPUTPATH  # set in main simulation script
-#     )
+    # class Network parameters:
+    params['networkParameters'] = dict(
+        v_init=-70.,  # initial membrane voltage for all cells (mV)
+        celsius=34,  # simulation temperature (deg. C)
+        # OUTPUTPATH=OUTPUTPATH  # set in main simulation script
+    )
     
-#     # class RecExtElectrode parameters:
-#     params['electrodeParameters'] = dict(
-#         x=np.zeros(16),  # x-coordinates of contacts
-#         y=np.zeros(16),  # y-coordinates of contacts
-#         z=np.linspace(1000., -250., 16),  # z-coordinates of contacts
-#         N=np.array([[0., 1., 0.] for _ in range(16)]),  # contact surface normals
-#         r=5.,  # contact radius
-#         n=100,  # n-point averaging for potential on each contact
-#         sigma=0.3,  # extracellular conductivity (S/m)
-#         method="linesource"  # use line sources
-#     )
+    # class RecExtElectrode parameters:
+    params['electrodeParameters'] = dict(
+        x=np.zeros(16),  # x-coordinates of contacts
+        y=np.zeros(16),  # y-coordinates of contacts
+        z=np.linspace(1000., -250., 16),  # z-coordinates of contacts
+        N=np.array([[0., 1., 0.] for _ in range(16)]),  # contact surface normals
+        r=5.,  # contact radius
+        n=100,  # n-point averaging for potential on each contact
+        sigma=0.3,  # extracellular conductivity (S/m)
+        method="linesource"  # use line sources
+    )
     
-#     # class LaminarCurrentSourceDensity parameters:
-#     params['csdParameters'] = dict(
-#         z=np.c_[params['electrodeParameters']['z'] - 50.,
-#                 params['electrodeParameters']['z'] + 50.],  # lower and upper boundaries
-#         r=np.array([params['populationParameters']['pop_args']['radius']] * 13)  # radius
-#     )
+    # class LaminarCurrentSourceDensity parameters:
+    params['csdParameters'] = dict(
+        z=np.c_[params['electrodeParameters']['z'] - 50.,
+                params['electrodeParameters']['z'] + 50.],  # lower and upper boundaries
+        r=np.array([params['populationParameters']['pop_args']['radius']] * 13)  # radius
+    )
     
-#     ## TODO: Possibly remove?
-#     # method Network.simulate() parameters:
-#     params['networkSimulationArguments'] = dict(
-#         rec_pop_contributions=True,  # store contributions by each population
-#         to_memory=True,  # simulate to memory
-#         to_file=False  # simulate to file
-#     )
+    ## TODO: Possibly remove?
+    # method Network.simulate() parameters:
+    params['networkSimulationArguments'] = dict(
+        rec_pop_contributions=True,  # store contributions by each population
+        to_memory=True,  # simulate to memory
+        to_file=False  # simulate to file
+    )
     
-#     # population names, morphologies, sizes and connection probability:
-#     params['morphologies'] = ['BallAndSticks_I.hoc', 
-#                     'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
-#                     'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
-#                     'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
-#                     'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc'
-#                     ]
-#     ## TODO: Remove
-#     # if TESTING:
-#     #     population_sizes = [32, 8]
-#     #     connectionProbability = [[1., 1.], [1., 1.]]
-#     # else:
-#     #     population_sizes = params['num_neurons']
-#     #     connectionProbability = params['connectivity']
+    # population names, morphologies, sizes and connection probability:
+    params['morphologies'] = ['BallAndSticks_I.hoc', 
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc'
+                    ]
+    ## TODO: Remove
+    # if TESTING:
+    #     population_sizes = [32, 8]
+    #     connectionProbability = [[1., 1.], [1., 1.]]
+    # else:
+    #     population_sizes = params['num_neurons']
+    #     connectionProbability = params['connectivity']
     
-#     # synapse model. All corresponding parameters for weights,
-#     # connection delays, multapses and layerwise positions are
-#     # set up as shape (2, 2) nested lists for each possible
-#     # connection on the form:
-#     # [["E:E", "E:I"],
-#     #  ["I:E", "I:I"]].
-#     # using convention "<pre>:<post>"
-#     ## TODO: The model needs to be exported but can't be pickled (or does it?)
-#     # params['synapseModel'] = neuron.h.Exp2Syn
-#     # synapse parameters in terms of rise- and decay time constants
-#     # (tau1, tau2 [ms]) and reversal potential (e [mV])
+    # synapse model. All corresponding parameters for weights,
+    # connection delays, multapses and layerwise positions are
+    # set up as shape (2, 2) nested lists for each possible
+    # connection on the form:
+    # [["E:E", "E:I"],
+    #  ["I:E", "I:I"]].
+    # using convention "<pre>:<post>"
+    ## TODO: The model needs to be exported but can't be pickled (or does it?)
+    # params['synapseModel'] = neuron.h.Exp2Syn
+    # synapse parameters in terms of rise- and decay time constants
+    # (tau1, tau2 [ms]) and reversal potential (e [mV])
     
-#     E2E = dict(tau1=0.2, tau2=1.8, e=0.)
-#     E2I = dict(tau1=0.2, tau2=1.8, e=0.)
-#     I2E = dict(tau1=0.1, tau2=9.0, e=-80.)
-#     I2I = dict(tau1=0.1, tau2=9.0, e=-80.)
+    E2E = dict(tau1=0.2, tau2=1.8, e=0.)
+    E2I = dict(tau1=0.2, tau2=1.8, e=0.)
+    I2E = dict(tau1=0.1, tau2=9.0, e=-80.)
+    I2I = dict(tau1=0.1, tau2=9.0, e=-80.)
     
-#     params['synapseParameters'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
-#     # synapse max. conductance (function, mean, st.dev., min.):
-#     params['weightFunction'] = np.random.normal
-#     # weight_<post><pre> values set by parameters file via main simulation scripts
-#     # weightArguments = [[dict(loc=weight_EE, scale=weight_EE / 10),
-#     #                     dict(loc=weight_IE, scale=weight_IE / 10)],
-#     #                    [dict(loc=weight_EI, scale=weight_EI / 10),
-#     #                     dict(loc=weight_II, scale=weight_II / 10)]]
-#     params['minweight'] = 0.  # weight values below this value will be redrawn
+    params['synapseParameters'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
+    # synapse max. conductance (function, mean, st.dev., min.):
+    params['weightFunction'] = np.random.normal
+    # weight_<post><pre> values set by parameters file via main simulation scripts
+    # weightArguments = [[dict(loc=weight_EE, scale=weight_EE / 10),
+    #                     dict(loc=weight_IE, scale=weight_IE / 10)],
+    #                    [dict(loc=weight_EI, scale=weight_EI / 10),
+    #                     dict(loc=weight_II, scale=weight_II / 10)]]
+    params['minweight'] = 0.  # weight values below this value will be redrawn
     
-#     # conduction delay (function, mean, st.dev., min.) using truncated normal
-#     # continuous random variable:
-#     params['delayFunction'] = st.truncnorm
+    # conduction delay (function, mean, st.dev., min.) using truncated normal
+    # continuous random variable:
+    params['delayFunction'] = st.truncnorm
     
-#     E2E = dict(a=(0.3 - 1.5) / 0.3, b=np.inf, loc=1.5, scale=0.3)
-#     E2I = dict(a=(0.3 - 1.4) / 0.4, b=np.inf, loc=1.4, scale=0.4)
-#     I2E = dict(a=(0.3 - 1.4) / 0.5, b=np.inf, loc=1.3, scale=0.5)
-#     I2I = dict(a=(0.3 - 1.2) / 0.6, b=np.inf, loc=1.2, scale=0.6)
+    E2E = dict(a=(0.3 - 1.5) / 0.3, b=np.inf, loc=1.5, scale=0.3)
+    E2I = dict(a=(0.3 - 1.4) / 0.4, b=np.inf, loc=1.4, scale=0.4)
+    I2E = dict(a=(0.3 - 1.4) / 0.5, b=np.inf, loc=1.3, scale=0.5)
+    I2I = dict(a=(0.3 - 1.2) / 0.6, b=np.inf, loc=1.2, scale=0.6)
     
-#     params['delayArguments'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
-#     # will be deprecated; has no effect with delayFunction = st.truncnorm:
-#     params['mindelay'] = None
+    params['delayArguments'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
+    # will be deprecated; has no effect with delayFunction = st.truncnorm:
+    params['mindelay'] = None
     
     
-#     # Distributions of multapses. They are here defined via a truncated normal
-#     # continous random variable distribution which will be used to compute a
-#     # discrete probability distribution for integer numbers of
-#     # synapses 1, 2, ..., 100, via a scipy.stats.rv_discrete instance
-#     params['multapseFunction'] = st.truncnorm
+    # Distributions of multapses. They are here defined via a truncated normal
+    # continous random variable distribution which will be used to compute a
+    # discrete probability distribution for integer numbers of
+    # synapses 1, 2, ..., 100, via a scipy.stats.rv_discrete instance
+    params['multapseFunction'] = st.truncnorm
     
-#     E2E = dict(a=(1 - 2.) / .4,
-#             b=(10 - 2.) / .4,
-#             loc=2.,
-#             scale=.4)
-#     E2I = dict(a=(1 - 2.) / .6,
-#              b=(10 - 2.) / .6,
-#              loc=2.,
-#              scale=.6)
-#     I2E = dict(a=(1 - 5.) / 0.9,
-#               b=(10 - 5.) / 0.9,
-#               loc=5.,
-#               scale=0.9)
-#     I2I = dict(a=(1 - 5.) / 1.1,
-#              b=(10 - 5.) / 1.1,
-#              loc=5.,
-#              scale=1.1)
+    E2E = dict(a=(1 - 2.) / .4,
+            b=(10 - 2.) / .4,
+            loc=2.,
+            scale=.4)
+    E2I = dict(a=(1 - 2.) / .6,
+              b=(10 - 2.) / .6,
+              loc=2.,
+              scale=.6)
+    I2E = dict(a=(1 - 5.) / 0.9,
+              b=(10 - 5.) / 0.9,
+              loc=5.,
+              scale=0.9)
+    I2I = dict(a=(1 - 5.) / 1.1,
+              b=(10 - 5.) / 1.1,
+              loc=5.,
+              scale=1.1)
     
 
-#     params['multapseArguments'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-#                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
+    params['multapseArguments'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
+                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
     
     
-#     # method NetworkCell.get_rand_idx_area_and_distribution_norm
-#     # parameters for layerwise synapse positions:
+    # method NetworkCell.get_rand_idx_area_and_distribution_norm
+    # parameters for layerwise synapse positions:
     
-#     ## Laminar thickness of layers in the microcircuit (in micrometers):
-#     ## Layer 1  : 90.
-#     ## Layer 2/3: 370.
-#     ## Layer 4  : 460.
-#     ## Layer 5  : 170.
-#     ## Layer 6  : 160.
+    ## Laminar thickness of layers in the microcircuit (in micrometers):
+    ## Layer 1  : 90.
+    ## Layer 2/3: 370.
+    ## Layer 4  : 460.
+    ## Layer 5  : 170.
+    ## Layer 6  : 160.
     
-#     syn_pos = [[]]*17
-#     ## Create synapse positional parameters
-#     for i in range(len(params['label'])):
-#         for j in range(len(params['label'])):
-#             if params['label'][i] == "E" and params['label'][j] == "E":
-#                 syn_pos[i].append(dict(section=['apic', 'dend'], ## E2E
-#                      fun=[st.norm, st.norm],
-#                      funargs=[dict(loc=0., scale=100.),
-#                               dict(loc=500., scale=100.)],
-#                      funweights=[0.5, 1.]
-#                      ))
-#             elif params['label'][i] == "E" and params['label'][j] != "E":
-#                 syn_pos[i].append(dict(section=['apic', 'dend'],           ##E2I
-#                      fun=[st.norm],
-#                      funargs=[dict(loc=50., scale=100.)],
-#                      funweights=[1.]
-#                      ))
-#             elif params['label'][i] != "E" and params['label'][j] == "E":
-#                 syn_pos[i].append(dict(section=['soma', 'apic', 'dend'],   ##I2E
-#                       fun=[st.norm],
-#                       funargs=[dict(loc=-50., scale=100.)],
-#                       funweights=[1.]
-#                       ))
-#             else:
-#                 syn_pos[i].append(dict(section=['soma', 'apic', 'dend'],    ## I2I
-#                      fun=[st.norm],
-#                      funargs=[dict(loc=-100., scale=100.)],
-#                      funweights=[1.]
-#                      ))
+    syn_pos = [[]]*17
+    ## Create synapse positional parameters
+    for i in range(len(params['label'])):
+        for j in range(len(params['label'])):
+            if params['label'][i] == "E" and params['label'][j] == "E":
+                syn_pos[i].append(dict(section=['apic', 'dend'], ## E2E
+                      fun=[st.norm, st.norm],
+                      funargs=[dict(loc=0., scale=100.),
+                              dict(loc=500., scale=100.)],
+                      funweights=[0.5, 1.]
+                      ))
+            elif params['label'][i] == "E" and params['label'][j] != "E":
+                syn_pos[i].append(dict(section=['apic', 'dend'],           ##E2I
+                      fun=[st.norm],
+                      funargs=[dict(loc=50., scale=100.)],
+                      funweights=[1.]
+                      ))
+            elif params['label'][i] != "E" and params['label'][j] == "E":
+                syn_pos[i].append(dict(section=['soma', 'apic', 'dend'],   ##I2E
+                      fun=[st.norm],
+                      funargs=[dict(loc=-50., scale=100.)],
+                      funweights=[1.]
+                      ))
+            else:
+                syn_pos[i].append(dict(section=['soma', 'apic', 'dend'],    ## I2I
+                      fun=[st.norm],
+                      funargs=[dict(loc=-100., scale=100.)],
+                      funweights=[1.]
+                      ))
     
 
-#     params['synapsePositionArguments'] = syn_pos
+    params['synapsePositionArguments'] = syn_pos
     
-#     # Parameters for extrinsic (e.g., cortico-cortical connections) synapses
-#     # and mean interval (ms)
-#     params['extSynapseParameters'] = dict(
-#         syntype='Exp2Syn',
-#         weight=0.0002,
-#         tau1=0.2,
-#         tau2=1.8,
-#         e=0.
-#     )
-#     params['netstim_interval'] = 25.
+    # Parameters for extrinsic (e.g., cortico-cortical connections) synapses
+    # and mean interval (ms)
+    params['extSynapseParameters'] = dict(
+        syntype='Exp2Syn',
+        weight=0.0002,
+        tau1=0.2,
+        tau2=1.8,
+        e=0.
+    )
+    params['netstim_interval'] = 25.
     
     
     
-#     return params
+    return params
 

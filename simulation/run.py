@@ -113,7 +113,17 @@ def run_network():
         print("Done! Starting simulation...")
     
     ## simulate
-    network.simulate(params['sim_time'])
+    network.simulate(200) ## Simulate 200ms, resume if spiking is reasonable-ish
+    
+    ## Get average of spikes
+    print(len(nest.GetStatus(network.test_probe)[0]['events']['times'])/0.1/sum(num_neurons))
+    if len(nest.GetStatus(network.test_probe)[0]['events']['times'])/0.1/sum(num_neurons) > 100:
+        print("Extreme spiking, aborting run...")
+        return  [10000]*17, [10000]*17, [10000]*17
+    
+    
+    network.simulate(params['sim_time']-200)
+    
     if params['verbose']:
         print(f"Time required for simulation: {time.time() - st}")
         print("Done! Fetching data...")
@@ -134,23 +144,15 @@ def run_network():
     
     
     if rank == 0:
+        
         ## join the results
-        # print(f"Size of population recordings: {network.get_nrec()}")
-        
-        # for i in range(len(network.get_pops())):
-        #     print(f"network size: {min(list(network.get_pops()[i].get(['global_id']).values())[0])}")
-        #     print(f"network size: {max(list(network.get_pops()[i].get(['global_id']).values())[0])}")
-        
-        #IDs = list(self.__populations[i].get(['global_id']).values())[0]
-        
-        
-        mmdata = join_results(mm_res)
         spikes = join_results(spike_res)
         
         ## Prepare data for graphing
         spikes = prep_spikes(spikes, network)
         
         if not params['opt_run']:
+            
             print("Done! Graphing spikes...")
             ## Define colors used in the raster plot per neuron population based on label
             label = network.get_labels()
@@ -171,6 +173,9 @@ def run_network():
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
+                
+                ## Only care about synaptic currents if we do LFPs
+                mmdata = join_results(mm_res)
                 
                 print(network.multimeters)
                 

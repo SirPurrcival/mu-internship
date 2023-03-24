@@ -17,11 +17,15 @@ class Network:
         self.spike_recorder = {}
         self.labels = []
         self.nrec = []
-        # self.g = p['g']
         self.rec_start = p['rec_start']
         self.rec_stop = p['rec_stop']
         self.resolution = p['resolution']
         self.opt = p['opt_run']
+        ## Monitors spiking through the first 200ms, if the spiking rate is
+        ## unrealistically high we abort this attempt
+        self.test_probe = nest.Create("spike_recorder")
+        self.test_probe.start = 100
+        self.test_probe.stop  = 200
 
     def addpop(self, neuron_type, pop_name ,num_neurons, neuron_params, label, 
                record_from_pop=True, nrec=0.):
@@ -86,6 +90,7 @@ class Network:
             
             ## Connect devices to the new population
             nest.Connect(newpop[:nrec], sr)
+            nest.Connect(newpop[:nrec], self.test_probe)
             
             ## append to dictionary for data extraction later
             self.spike_recorder[pop_name] = sr
@@ -136,13 +141,13 @@ class Network:
         R = itertools.product(r, r)
         
         for x,y in R:
-            #print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
+            print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
             if synapse_type[x,y] == "E":
                 receptor_type = 1
             else:
                 receptor_type = 2
+            
             ## Draw weights
-
             w_min = 0.0
             w_max = np.Inf
             weight = nest.math.redraw(nest.random.normal(
@@ -155,10 +160,7 @@ class Network:
                 std=abs(3.0*0.5)),
                 min=nest.resolution*3, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
-            
-            # if synapse_type[x,y] != "E":
-            #     weight *= self.g
-                
+
             nest.Connect(self.populations[names[x]],
                          self.populations[names[y]],
                          conn_spec = {'rule': 'fixed_indegree', 
