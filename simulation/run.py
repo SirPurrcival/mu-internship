@@ -119,7 +119,10 @@ def run_network():
     print(len(nest.GetStatus(network.test_probe)[0]['events']['times'])/0.1/sum(num_neurons))
     if len(nest.GetStatus(network.test_probe)[0]['events']['times'])/0.1/sum(num_neurons) > 100:
         print("Extreme spiking, aborting run...")
-        return  [10000]*17, [10000]*17, [10000]*17
+        with open("sim_results", 'wb') as f:
+            data = ([10000]*17, [10000]*17, [10000]*17)
+            pickle.dump(data, f)
+        return  data
     
     
     network.simulate(params['sim_time']-200)
@@ -246,6 +249,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-from setup import setup
-setup()
+#from setup import setup
+#setup()
 nya = run_network()
