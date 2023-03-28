@@ -141,7 +141,7 @@ class Network:
         R = itertools.product(r, r)
         
         for x,y in R:
-            print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
+            #print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
             if synapse_type[x,y] == "E":
                 receptor_type = 1
             else:
@@ -158,7 +158,7 @@ class Network:
             delay = nest.math.redraw(nest.random.normal(
                 mean = 3.0,
                 std=abs(3.0*0.5)),
-                min=nest.resolution*3, # Why would we do this? -> - 0.5 * nest.resolution,
+                min=self.resolution, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
 
             nest.Connect(self.populations[names[x]],

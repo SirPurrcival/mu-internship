@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-
+print("Starting sim script")
 ######################
 ## Import libraries ##
 ######################
-import mpi4py
-mpi4py.rc.thread_level = "multiple"
+import mpi4py as mpi
+mpi.rc.thread_level = "multiple"
 
 from mpi4py import MPI
 
@@ -17,7 +17,6 @@ import time
 from prep_LFP_kernel import prep_LFP_kernel
 
 import pickle
-
 
 def run_network():
     ## Load config created by setup()
@@ -122,7 +121,7 @@ def run_network():
         with open("sim_results", 'wb') as f:
             data = ([10000]*17, [10000]*17, [10000]*17)
             pickle.dump(data, f)
-        return  data
+        return data
     
     
     network.simulate(params['sim_time']-200)
@@ -249,6 +248,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-#from setup import setup
-#setup()
+from setup import setup
+setup()
 nya = run_network()

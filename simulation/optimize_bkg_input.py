@@ -8,13 +8,13 @@ import os
 
 def objective_function(**args):
     # Set the network parameters based on the input values
-    n_workers = 8
+    n_workers = 4
     
     params = setup()
     ## Set the amount of analysis done during runtime. Minimize stuff done
     ## for faster results
     params['calc_lfp'] = False
-    params['verbose']  = False
+    params['verbose']  = True
     params['opt_run']  = True
     
     ## Change values and run the function with different parameters
@@ -33,13 +33,17 @@ def objective_function(**args):
     ## Run the simulation in parallel by calling the simulation script with MPI  
     command = f"mpirun -n {n_workers} --verbose python3 run.py"
     
-    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+    process = subprocess.Popen(command.split(), stdout=subprocess.DEVNULL,#stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
                                cwd=cwd, env=env)
+    
     return_code = process.wait()
     print("Script exited with return code:", return_code)
-    output, error = process.communicate()
-    print("Standard output:\n", output.decode())
-    print("Error output:\n", error.decode())
+    #output, error = process.communicate()
+    #print("Standard output:\n", output.decode())
+    #print("Error output:\n", error.decode())
+    
+    #process.stdout.close()
+    #process.stderr.close()
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:
@@ -59,7 +63,6 @@ def objective_function(**args):
     return -np.mean(scores)
 
 def optimize_network(optimizer):
-    
     uf = UtilityFunction(kind = "ucb", kappa = 4, xi = 0.2) # xi = 0.01 , kappa = 1.96
     
     optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=True)

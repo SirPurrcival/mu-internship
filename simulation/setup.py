@@ -1,8 +1,6 @@
-from functions import Network, raster, rate, approximate_lfp_timecourse, get_isi, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 import numpy as np
 import pickle
 import scipy.stats as st
-import neuron
 from LFPy import NetworkCell
 from example_network_methods import set_active_hay2011 as set_active
 
@@ -22,7 +20,7 @@ def setup():
         'verbose'    :  True,                                                       # Flag for verbose function output
         'K_scale'    :     1.,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
-        'N_scale'    :     .5,                                                      # Scaling factor for the number of neurons
+        'N_scale'    :     .1,                                                      # Scaling factor for the number of neurons
         'R_scale'    :     0.1,                                                     # Fraction of neurons to be recorded from
         'opt_run'    :   False,                                                     # Flag for optimizer run, run minimal settings
         'g'          :      4.,                                                     # Excitation-Inhibition balance
@@ -113,7 +111,7 @@ def setup():
     # 1e-24, 3.2543403859854227, 0.641944589590017, 2.1834687407340443,
     # 7.0, 1e-24, 2.986536780670069, 0.5803055054744614
     
-    params['ext_rate']    = 5.3735191217570061
+    params['ext_rate']    = 1.3735191217570061
     params['ext_nodes']   = np.array([500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500])
     params['ext_weights'] = [4.7965744951318477, 
                              7.762524932070633, 12.818597965224434, 5.947184199171211, 3.3553839597064073, 

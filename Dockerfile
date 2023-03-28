@@ -97,9 +97,6 @@ RUN git clone https://github.com/nest/nest-simulator.git && \
   source bin/nest_vars.sh && \
   make install
 
-# Add NEST binary folder to PATH
-RUN echo "source /opt/nest/bin/nest_vars.sh" >> root/.bashrc
-
 ## Install Neuron
 RUN git clone --depth 1 -b 8.0.0 https://github.com/neuronsimulator/nrn.git /usr/src/nrn
 RUN mkdir nrn-bld
@@ -115,25 +112,9 @@ RUN cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/nrn/ \
 
 RUN cmake --build nrn-bld --parallel 4 --target install
 
-# add nrnpython to PYTHONPATH
-ENV PYTHONPATH /opt/nrn/lib/python:${PYTHONPATH}
-
 # clean up
 RUN rm -r /usr/src/nrn
 RUN rm -r nrn-bld
-
-# ---- pip install some additional things
-RUN pip install pymoo
-RUN pip install git+https://github.com/NeuralEnsemble/parameters
-
-# ---- install NESTML -----
-RUN pip install antlr4-python3-runtime
-RUN pip install git+https://github.com/nest/nestml.git
-
-# ---- install LFPykernels (main branch) -----
-RUN pip install git+https://github.com/LFPy/LFPykernels
-
-
 
 ###############################################################################
 
@@ -192,6 +173,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      mkdir code && \
      mkdir data
 
+# Add NEST binary folder to PATH
+RUN echo "source /opt/nest/bin/nest_vars.sh" >> root/.bashrc
+
+# add nrnpython to PYTHONPATH
+ENV PYTHONPATH /opt/nrn/lib/python:${PYTHONPATH}
+
+# ---- pip install some additional things
+RUN pip install pymoo
+RUN pip install git+https://github.com/NeuralEnsemble/parameters
+
+# ---- install NESTML -----
+RUN pip install antlr4-python3-runtime
+RUN pip install git+https://github.com/nest/nestml.git
+
+# ---- install LFPykernels (main branch) -----
+RUN pip install git+https://github.com/LFPy/LFPykernels
+
+
 COPY --from=buildermaster /opt /opt
 
 COPY . /code
@@ -199,9 +198,6 @@ COPY . /code
 EXPOSE 5000 8080
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && \
-        chmod +x /code/simulation/run.py
-
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-#ENTRYPOINT ["/bin/bash"]
