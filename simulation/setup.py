@@ -20,7 +20,7 @@ def setup():
         'verbose'    :  True,                                                       # Flag for verbose function output
         'K_scale'    :     1.,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
-        'N_scale'    :     .1,                                                      # Scaling factor for the number of neurons
+        'N_scale'    :     .5,                                                      # Scaling factor for the number of neurons
         'R_scale'    :     0.1,                                                     # Fraction of neurons to be recorded from
         'opt_run'    :   False,                                                     # Flag for optimizer run, run minimal settings
         'g'          :      4.,                                                     # Excitation-Inhibition balance

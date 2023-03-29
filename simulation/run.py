@@ -36,7 +36,7 @@ def run_network():
     nest.local_num_threads = 32 ## adapt if necessary
     nest.print_time = False
     nest.resolution = params['resolution']
-
+    nest.set_verbosity("M_WARNING")
     nest.overwrite_files = True
     ## Path relative to working directory
     #nest.data_path = ""
@@ -111,20 +111,31 @@ def run_network():
     if params['verbose']:
         print("Done! Starting simulation...")
     
-    ## simulate
-    network.simulate(200) ## Simulate 200ms, resume if spiking is reasonable-ish
-    
-    ## Get average of spikes
-    print(len(nest.GetStatus(network.test_probe)[0]['events']['times'])/0.1/sum(num_neurons))
-    if len(nest.GetStatus(network.test_probe)[0]['events']['times'])/0.1/sum(num_neurons) > 100:
-        print("Extreme spiking, aborting run...")
-        with open("sim_results", 'wb') as f:
-            data = ([10000]*17, [10000]*17, [10000]*17)
-            pickle.dump(data, f)
-        return data
-    
-    
-    network.simulate(params['sim_time']-200)
+    ## simulation loop
+    time_step = time.time()
+    simulating = True
+    simulation_time = 0
+    while simulating: 
+        ## End the simulation if the given time has been reached or the
+        ## simulation takes too much time (excessive spiking)
+        if time.time() - time_step > 20:
+            simulating = False
+            if params['verbose']:    
+                print("Extreme spiking, aborting run...")
+            with open("sim_results", 'wb') as f:
+                data = ([10000]*17, [10000]*17, [10000]*17)
+                pickle.dump(data, f)
+            return data
+        ## Exit normally
+        elif simulation_time >= params['sim_time']:
+            print("Simulation done!")
+            simulating = False
+        ## Simulate one step of 10ms
+        else:
+            time_step = time.time()
+            network.simulate(10)
+            simulation_time += 10
+            print(f"Simulating for {simulation_time}.\nTime taken for simulating 10ms: {time.time() - time_step}ms")
     
     if params['verbose']:
         print(f"Time required for simulation: {time.time() - st}")
@@ -248,6 +259,6 @@ def run_network():
             pickle.dump(data, f)
         return (irregularity, synchrony, firing_rate)
      
-from setup import setup
-setup()
+#from setup import setup
+#setup()
 nya = run_network()

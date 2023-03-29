@@ -8,7 +8,7 @@ import os
 
 def objective_function(**args):
     # Set the network parameters based on the input values
-    n_workers = 4
+    n_workers = 8
     
     params = setup()
     ## Set the amount of analysis done during runtime. Minimize stuff done
@@ -33,22 +33,25 @@ def objective_function(**args):
     ## Run the simulation in parallel by calling the simulation script with MPI  
     command = f"mpirun -n {n_workers} --verbose python3 run.py"
     
-    process = subprocess.Popen(command.split(), stdout=subprocess.DEVNULL,#stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+    process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, ##stdout=subprocess.DEVNULL,
                                cwd=cwd, env=env)
     
     return_code = process.wait()
     print("Script exited with return code:", return_code)
-    #output, error = process.communicate()
-    #print("Standard output:\n", output.decode())
-    #print("Error output:\n", error.decode())
+    output, error = process.communicate()
+    print("Standard output:\n", output.decode())
+    print("Error output:\n", error.decode())
     
-    #process.stdout.close()
-    #process.stderr.close()
+    process.stdout.close()
+    process.stderr.close()
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:
         data = pickle.load(f)
     irregularity, synchrony, firing_rate = data
+    
+    if sum(irregularity) >= 169.999 and sum(synchrony) >= 169.999 and sum(firing_rate) >= 169.999:
+        print("Run was aborted due to excessive spiking")
     
     ## Define target values
     target_irregularity = 0.8
@@ -68,7 +71,7 @@ def optimize_network(optimizer):
     optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=True)
     
     optimizer.maximize(
-            init_points=60,
+            init_points=50,
             n_iter=300,
             acquisition_function=uf
         )
