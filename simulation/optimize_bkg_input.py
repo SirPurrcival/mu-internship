@@ -46,8 +46,8 @@ def objective_function(**args):
     # print("Standard output:\n", output.decode())
     # print("Error output:\n", error.decode())
     
-    process.stdout.close()
-    process.stderr.close()
+    #process.stdout.close()
+    #process.stderr.close()
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:
