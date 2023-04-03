@@ -46,8 +46,8 @@ def objective_function(**args):
     # print("Standard output:\n", output.decode())
     # print("Error output:\n", error.decode())
     
-    #process.stdout.close()
-    #process.stderr.close()
+    process.stdout.close()
+    process.stderr.close()
     
     # Read the results from the file
     with open("sim_results", 'rb') as f:
@@ -76,7 +76,7 @@ def optimize_network(optimizer):
     optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=True)
     
     optimizer.maximize(
-            init_points=30,
+            init_points=40,
             n_iter=200,
             acquisition_function=uf
         )

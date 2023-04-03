@@ -1,10 +1,22 @@
 #!/bin/bash
 
 ## Go to WD
-cd ~/test/
+cd ~/code/
+
+## Create new directory
+mkdir new
+
+## move there
+cd new/
 
 ## Remove old code if it's there
 rm -rf mu-internship/
 
 ## Clone into repository
 git clone -b parallel https://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@github.com/SirPurrcival/mu-internship.git
+
+## Go to repository
+cd mu-internship/simulation
+
+## Execute simulation
+python3 run.py
