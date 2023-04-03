@@ -1,2 +1,10 @@
 #!/bin/bash
-adduser test
+
+## Go to WD
+cd ~/test/
+
+## Remove old code if it's there
+rm -rf mu-internship/
+
+## Clone into repository
+git clone -b parallel https://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@github.com/SirPurrcival/mu-internship.git
