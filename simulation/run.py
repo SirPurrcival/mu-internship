@@ -31,7 +31,6 @@ def run_network():
     ########################
     ## Set NEST Variables ##
     ########################
-
     nest.ResetKernel()
     nest.local_num_threads = 32 ## adapt if necessary
     nest.print_time = False
@@ -115,7 +114,7 @@ def run_network():
     while simulating: 
         ## End the simulation if the given time has been reached or the
         ## simulation takes too much time (excessive spiking)
-        if time.time() - time_step > 5 and simulation_time > 50:
+        if time.time() - time_step > 200 and simulation_time > 50:
             simulating = False
             # if params['verbose']:    
             #     print("Extreme spiking, aborting run...")
@@ -134,7 +133,7 @@ def run_network():
             time_step = time.time()
             network.simulate(10)
             simulation_time += 10
-            #print(f"Simulating for {simulation_time}.\nTime taken for simulating 10ms: {time.time() - time_step}s")
+            print(f"Rank {rank} simulating for {simulation_time}.\nTime taken for simulating 10ms: {time.time() - time_step}s")
     
     if params['verbose']:
         print(f"Time required for simulation: {time.time() - st}")
@@ -151,8 +150,20 @@ def run_network():
     if params['verbose']:
         print("Done, gathering results and preparing data...")
     
-    mm_res    = MPI.COMM_WORLD.gather(mmdata, root=0)
-    spike_res = MPI.COMM_WORLD.gather(spikes, root=0)
+        
+    # Synchronize all processes
+    comm.barrier()
+    
+    # Gather results
+    if rank == 0:
+        mm_res    = comm.gather(mmdata, root=0)
+        spike_res = comm.gather(spikes, root=0)
+    else:
+        comm.gather(mmdata, root=0)
+        comm.gather(spikes, root=0)
+    
+    # mm_res    = comm.gather(mmdata, root=0)
+    # spike_res = comm.gather(spikes, root=0)
     
     
     
