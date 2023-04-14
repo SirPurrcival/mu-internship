@@ -9,7 +9,6 @@ import example_network_methods as methods
 from pynestml.frontend.pynestml_frontend import generate_nest_target
 from lfpykernels import KernelApprox, GaussCylinderPotential, KernelApproxCurrentDipoleMoment
 
-
 def prep_LFP_kernel(params):
 
     plt.rcParams.update({
