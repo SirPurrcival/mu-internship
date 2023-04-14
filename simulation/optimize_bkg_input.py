@@ -10,7 +10,7 @@ import time
 
 def objective_function(**args):
     # Set the network parameters based on the input values
-    n_workers = 8
+    n_workers = 16
     
     print("Starting step...")
     st = time.time()
@@ -73,11 +73,11 @@ def objective_function(**args):
 def optimize_network(optimizer):
     uf = UtilityFunction(kind = "ucb", kappa = 4, xi = 0.2) # xi = 0.01 , kappa = 1.96
     
-    optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=True)
+    optimizer.set_gp_params(alpha=1e-5, n_restarts_optimizer=5, normalize_y=False)
     
     optimizer.maximize(
             init_points=40,
-            n_iter=200,
+            n_iter=100,
             acquisition_function=uf
         )
     # best = None
@@ -106,7 +106,7 @@ def optimize_network(optimizer):
 if __name__ == '__main__':
     # Define the parameter space    
     pbounds = dict()
-    pbounds['ext_rate'] = (0.5, 1)
+    pbounds['ext_rate'] = (3.0, 8.0)
     for i in range(17):
         #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
         pbounds[f'pop{i}_weights'] = (1e-24, 14e0)
@@ -125,7 +125,15 @@ if __name__ == '__main__':
     )
     
     #with MPIPoolExecutor(max_workers=n_workers) as executor:
-    params= optimize_network(optimizer)
+
+    try:
+        params= optimize_network(optimizer)
+    except:
+        print("An error occurred (probably duplicate value). Writing current best to file and exiting...")
+        print(optimizer.max['params'])
+        with open("simresults/best_params", 'wb') as f:
+            pickle.dump(optimizer.max['params'], f)
+        
     print(optimizer.max['params'])
     with open("simresults/best_params", 'wb') as f:
         pickle.dump(optimizer.max['params'], f)

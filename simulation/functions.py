@@ -144,14 +144,15 @@ class Network:
             #print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
             if synapse_type[x,y] == "E":
                 receptor_type = 1
+                w_min = 0.0
+                w_max = np.inf
             else:
                 receptor_type = 2
-            
-            ## Draw weights
-            w_min = 0.0
-            w_max = np.Inf
+                w_min = np.NINF
+                w_max = 0.0
+                
             weight = nest.math.redraw(nest.random.normal(
-                mean = syn_specs[x,y],
+                mean = -syn_specs[x,y] if synapse_type[x,y] != "E" else syn_specs[x,y],
                 std=max(abs(syn_specs[x,y]*0.1), 1e-10)),
                 min=w_min,
                 max=w_max)
