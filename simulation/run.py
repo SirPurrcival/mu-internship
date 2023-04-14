@@ -88,6 +88,13 @@ def run_network():
     for i in range(len(ext_rates)):
         network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=params['layer_type'][i], weight=params['ext_weights'][i])
     
+    ## Add DC stimulation
+    ## Adding a dc generator seems to be very inefficient according to NEST docs
+    ## so we'll change I_e of the neurons directly
+    dc_input = params['DC_current']
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_E")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_E")
+    
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
     if params['verbose']:
@@ -175,7 +182,7 @@ def run_network():
             colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
             
             ## Plot spike data
-            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label)
+            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(dc_input)):0>4}")
             plt.show()
             
             ## Display the average firing rate in Hz

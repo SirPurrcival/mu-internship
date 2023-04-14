@@ -192,6 +192,11 @@ class Network:
         stimulus.rate = source['rate']
         nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
                                                                                                 'weight': weight})
+        
+    def add_dc_stimulation(self, source, target):
+        stimulus = nest.Create(source['type'])
+        stimulus.amplitude = source['amplitude']
+        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'})
     
     def get_pops(self):
         """
@@ -406,7 +411,7 @@ def prep_spikes(spike_list, network):
     
 
 # Helper functions
-def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
+def raster(spikes, rec_start, rec_stop, colors, nrec, label, suffix="", figsize=(9, 5)):
     """
     Draws the scatterplot for the spiketimes of each neuronal population as well as
     a histogram of spiketimes over all neurons.
@@ -494,7 +499,7 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
     
     plt.tight_layout(pad=1)
 
-    plt.savefig('simresults/raster.png')
+    plt.savefig(f"simresults/raster_{suffix}.png")
   
 def rate(spikes, rec_start, rec_stop):
     """

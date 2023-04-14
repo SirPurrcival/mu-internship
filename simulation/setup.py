@@ -26,6 +26,7 @@ def setup():
         'g'          :      4.,                                                     # Excitation-Inhibition balance
         'resolution' :   2**-3,                                                     # Resolution of the simulaton
         'transient'  :     200,                                                     # Ignore the first x ms of the simulation
+        'DC_current' :    10.0,
         'num_neurons': np.array([776, 47386, 3876, 2807, 6683, 70387, 9502, 5455,   # Number of neurons by population
                           2640, 20740, 2186, 1958, 410, 19839, 1869, 1869, 325]),
         'label'      : ['Htr','E','Pv','Sst','Htr','E','Pv','Sst','Htr','E','Pv',   # Label for the populations
