@@ -88,11 +88,16 @@ def run_network():
         network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=params['layer_type'][i], weight=params['ext_weights'][i])
     
     ## Add DC stimulation
-    ## Adding a dc generator seems to be very inefficient according to NEST docs
-    ## so we'll change I_e of the neurons directly
     dc_input = params['DC_current']
     network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_E")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_Pvalb")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_Sst")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_Htr3a")
+    
     network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_E")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_Pvalb")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_Sst")
+    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_Htr3a")
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
