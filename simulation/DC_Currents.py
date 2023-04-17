@@ -24,10 +24,10 @@ n_workers = 16
 
 fr_list = []
 
-for dc in range(0,501,2):
-    params['DC_current'] = dc
+for th in range(0,3,0.01):
+    params['th_in'] = 900 * th
     
-    print(f"Starting run with DC current of {dc}")
+    print(f"Starting run with thalamic input of {th}")
     st = time.time()
 
     ## Write parameters to file so the network can read it in
@@ -52,7 +52,7 @@ for dc in range(0,501,2):
         data = pickle.load(f)
         
     irregularity, synchrony, firing_rate = data
-    fr_list.append((dc ,np.mean(firing_rate)))
+    fr_list.append((th ,np.mean(firing_rate)))
 
 with open("simresults/firing_rates", 'wb') as f:
     pickle.dump(fr_list, f)

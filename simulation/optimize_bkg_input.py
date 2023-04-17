@@ -106,7 +106,7 @@ def optimize_network(optimizer):
 if __name__ == '__main__':
     # Define the parameter space    
     pbounds = dict()
-    pbounds['ext_rate'] = (3.0, 8.0)
+    pbounds['ext_rate'] = (1.0, 8.0)
     for i in range(17):
         #pbounds[f'pop{i}_stim_nodes'] = (500,2000)
         pbounds[f'pop{i}_weights'] = (1e-24, 14e0)

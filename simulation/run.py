@@ -88,16 +88,16 @@ def run_network():
         network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=params['layer_type'][i], weight=params['ext_weights'][i])
     
     ## Add DC stimulation
-    dc_input = params['DC_current']
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_E")
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_Pvalb")
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_Sst")
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L4_Htr3a")
+    th_input = params['th_in']
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Pvalb", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Sst", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Htr3a", weight=1.0)
     
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_E")
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_Pvalb")
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_Sst")
-    network.add_dc_stimulation(source={'type': 'dc_generator', 'amplitude': dc_input}, target="L6_Htr3a")
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_E", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Pvalb", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Sst", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Htr3a", weight=1.0)
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
@@ -198,7 +198,7 @@ def run_network():
             colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
             
             ## Plot spike data
-            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(dc_input)):0>4}")
+            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(th_input)):0>4}")
             plt.show()
             
             ## Display the average firing rate in Hz
