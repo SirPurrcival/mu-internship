@@ -11,10 +11,9 @@ from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
-from functions import Network, plot_LFPs, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
+from functions import Network, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 #import icsd
 import time
-from prep_LFP_kernel import prep_LFP_kernel
 
 import pickle
 
@@ -110,14 +109,8 @@ def run_network():
     if params['verbose']:
         print(f"Time required for connection setup: {time.time() - st}")
         
-    ## Prepare LFP kernels if we care about LFPs this run
-    if params['calc_lfp']:
-        print("Preparing Kernels and building filters for LFP approximation...")
-        H_YX = prep_LFP_kernel(params)
-        network.create_fir_filters(H_YX, params)
-        print(f"Time required for LFP setup {time.time() - st}")
     if params['verbose']:
-        print("Done! Starting simulation...")
+        print("Starting simulation...")
     
     ## simulation loop
     time_step = time.time()
@@ -126,6 +119,7 @@ def run_network():
     while simulating: 
         ## End the simulation if the given time has been reached or the
         ## simulation takes too much time (excessive spiking)
+        ## Currently disabled (set to 50 seconds per 10ms) due to occasional hickups of the DSRI
         if time.time() - time_step > 200 and simulation_time > 50:
             simulating = False
             # if params['verbose']:    
@@ -215,10 +209,6 @@ def run_network():
                 
                 ## Only care about synaptic currents if we do LFPs
                 mmdata = join_results(mm_res)
-                
-                print(network.multimeters)
-                
-                plot_LFPs(network, params, H_YX, num_neurons)                
                 
                 times = np.unique(mmdata[0]["times"])
                 
