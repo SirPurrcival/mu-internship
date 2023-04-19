@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-
+print("Starting sim script")
 ######################
 ## Import libraries ##
 ######################
-import mpi4py
-mpi4py.rc.thread_level = "multiple"
+import mpi4py as mpi
+mpi.rc.thread_level = "multiple"
 
 from mpi4py import MPI
 
@@ -15,9 +15,7 @@ from functions import Network, raster, rate, approximate_lfp_timecourse, get_irr
 #import icsd
 import time
 
-
 import pickle
-
 
 def run_network():
     ## Load config created by setup()
@@ -32,13 +30,11 @@ def run_network():
     ########################
     ## Set NEST Variables ##
     ########################
-
     nest.ResetKernel()
     nest.local_num_threads = 32 ## adapt if necessary
     nest.print_time = False
-    resolution = 0.1
-    nest.resolution = resolution
-
+    nest.resolution = params['resolution']
+    nest.set_verbosity("M_WARNING")
     nest.overwrite_files = True
     ## Path relative to working directory
     #nest.data_path = ""
@@ -63,14 +59,14 @@ def run_network():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     
-    network = Network(resolution, params['rec_start'], params['rec_stop'])
+    network = Network(params) #params['resolution'], params['rec_start'], params['rec_stop'], params['g'])
     
     # Populations
     if params['verbose']:
         print(f"Time required for setup: {time.time() - st}")
         print("Populating network...")
     for i in range(len(params['layer_type'])):
-        network.addpop('glif_psc', int(num_neurons[i]), params['cell_type'][params['layer_type'][i]], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
+        network.addpop('glif_psc', params['layer_type'][i] , int(num_neurons[i]), params['cell_type'][params['layer_type'][i]], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
     
     ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
     #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale ## original
@@ -84,21 +80,67 @@ def run_network():
     #ext_rates = np.array([1500, 1200, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * relative_weight * 8 * Kscale
     
     # # add stimulation
+    if params['verbose']:
+        print(f"Time required to populate network: {time.time() - st}")
+        print("Adding stimulation...")
     for i in range(len(ext_rates)):
-        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=i, weight=params['ext_weights'][i])
+        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=params['layer_type'][i], weight=params['ext_weights'][i])
+    
+    ## Add DC stimulation
+    th_input = params['th_in']
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Pvalb", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Sst", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Htr3a", weight=1.0)
+    
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_E", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Pvalb", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Sst", weight=1.0)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Htr3a", weight=1.0)
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
     if params['verbose']:
-        print(f"Time required to populate network: {time.time() - st}")
+        print(f"Time required for stimulation setup: {time.time() - st}")
         print("Connecting network...")
-    network.connect_all(connections, params['syn_type'], synaptic_strength)
+    
+    network.connect_all(params['layer_type'], connections, params['syn_type'], synaptic_strength)
+    
     if params['verbose']:
         print(f"Time required for connection setup: {time.time() - st}")
-        print("Done! Starting simulation...")
+        
+    if params['verbose']:
+        print("Starting simulation...")
     
-    ## simulate
-    network.simulate(params['sim_time'])
+    ## simulation loop
+    time_step = time.time()
+    simulating = True
+    simulation_time = 0
+    while simulating: 
+        ## End the simulation if the given time has been reached or the
+        ## simulation takes too much time (excessive spiking)
+        ## Currently disabled (set to 50 seconds per 10ms) due to occasional hickups of the DSRI
+        if time.time() - time_step > 200 and simulation_time > 50:
+            simulating = False
+            # if params['verbose']:    
+            #     print("Extreme spiking, aborting run...")
+            if params['verbose']:
+                print(f"Simulation interrupted at {simulation_time} because it took {time.time() - time_step} seconds.")
+            with open("sim_results", 'wb') as f:
+                data = ([10000]*17, [10000]*17, [10000]*17)
+                pickle.dump(data, f)
+            return data
+        ## Exit normally
+        elif simulation_time >= params['sim_time']:
+            print("Simulation done!")
+            simulating = False
+        ## Simulate one step of 10ms
+        else:
+            time_step = time.time()
+            network.simulate(10)
+            simulation_time += 10
+            print(f"Rank {rank} simulating for {simulation_time}.\nTime taken for simulating 10ms: {time.time() - time_step}s")
+    
     if params['verbose']:
         print(f"Time required for simulation: {time.time() - st}")
         print("Done! Fetching data...")
@@ -114,35 +156,43 @@ def run_network():
     if params['verbose']:
         print("Done, gathering results and preparing data...")
     
-    mm_res    = MPI.COMM_WORLD.gather(mmdata, root=0)
-    spike_res = MPI.COMM_WORLD.gather(spikes, root=0)
+        
+    # Synchronize all processes
+    comm.barrier()
+    
+    # Gather results
+    if rank == 0:
+        mm_res    = comm.gather(mmdata, root=0)
+        spike_res = comm.gather(spikes, root=0)
+    else:
+        comm.gather(mmdata, root=0)
+        comm.gather(spikes, root=0)
+    
+    # mm_res    = comm.gather(mmdata, root=0)
+    # spike_res = comm.gather(spikes, root=0)
+    
     
     
     if rank == 0:
+        
         ## join the results
-        # print(f"Size of population recordings: {network.get_nrec()}")
-        
-        # for i in range(len(network.get_pops())):
-        #     print(f"network size: {min(list(network.get_pops()[i].get(['global_id']).values())[0])}")
-        #     print(f"network size: {max(list(network.get_pops()[i].get(['global_id']).values())[0])}")
-        
-        #IDs = list(self.__populations[i].get(['global_id']).values())[0]
-        
-        
-        mmdata = join_results(mm_res)
         spikes = join_results(spike_res)
         
         ## Prepare data for graphing
         spikes = prep_spikes(spikes, network)
         
+        if params['verbose']:
+            print(f"Done. Time required for simulation and gathering: {time.time() - st}")
+        
         if not params['opt_run']:
-            print("Done! Graphing spikes...")
+            
+            print("Graphing spikes...")
             ## Define colors used in the raster plot per neuron population based on label
             label = network.get_labels()
             colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
             
             ## Plot spike data
-            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label)
+            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(th_input)):0>4}")
             plt.show()
             
             ## Display the average firing rate in Hz
@@ -156,6 +206,10 @@ def run_network():
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
+                
+                ## Only care about synaptic currents if we do LFPs
+                mmdata = join_results(mm_res)
+                
                 times = np.unique(mmdata[0]["times"])
                 
                 ## append labels to data

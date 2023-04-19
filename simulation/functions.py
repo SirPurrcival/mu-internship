@@ -8,17 +8,23 @@ import random
 ## 
 # Create classes
 class Network:
-    def __init__(self, resolution, rec_start, rec_stop):
-        self.__populations = []
-        self.__multimeter = []
-        self.__spike_recorder = []
-        self.__labels = []
-        self.__nrec = []
-        self.rec_start = rec_start
-        self.rec_stop = rec_stop
-        self.resolution = resolution
+    def __init__(self, p):
+        self.populations = {}
+        self.multimeter = {}
+        self.spike_recorder = {}
+        self.labels = []
+        self.nrec = []
+        self.rec_start = p['rec_start']
+        self.rec_stop = p['rec_stop']
+        self.resolution = p['resolution']
+        self.opt = p['opt_run']
+        ## Monitors spiking through the first 200ms, if the spiking rate is
+        ## unrealistically high we abort this attempt
+        self.test_probe = nest.Create("spike_recorder")
+        self.test_probe.start = 100
+        self.test_probe.stop  = 200
 
-    def addpop(self, neuron_type, num_neurons, neuron_params, label, 
+    def addpop(self, neuron_type, pop_name ,num_neurons, neuron_params, label, 
                record_from_pop=True, nrec=0.):
         """
         Adds a population to the network with given parameters
@@ -50,7 +56,7 @@ class Network:
         if not isinstance(neuron_params, dict):
             neuron_params = random.choices(neuron_params, k=num_neurons)
         
-        self.__nrec.append(nrec)
+        self.nrec.append(nrec)
         
         ## Create the neuronal population
         newpop = nest.Create(neuron_type, num_neurons, neuron_params)
@@ -58,26 +64,36 @@ class Network:
         if record_from_pop:
             ## Create recording devices
             sr = nest.Create("spike_recorder")
-            mm = nest.Create("multimeter",
+            
+            ## Only record if necessary
+            if not self.opt:
+                mm = nest.Create("multimeter",
                              params={"interval": self.resolution,
                              "record_from": ["I_syn"]})
+                
+                ## Set start/stop times
+                mm.start = self.rec_start
+                mm.stop = self.rec_stop
+                
+                ## Connect devices to the new population
+                nest.Connect(mm, newpop[:nrec])
+                
+                ## append to dictionary for data extraction later
+                self.multimeter[pop_name] = mm
             
             ## Set start/stop times
             sr.start = self.rec_start
             sr.stop = self.rec_stop
-            mm.start = self.rec_start
-            mm.stop = self.rec_stop
             
             ## Connect devices to the new population
             nest.Connect(newpop[:nrec], sr)
-            nest.Connect(mm, newpop[:nrec])
+            nest.Connect(newpop[:nrec], self.test_probe)
             
-            ## append to list for data extraction later
-            self.__multimeter.append(mm)
-            self.__spike_recorder.append(sr)
+            ## append to dictionary for data extraction later
+            self.spike_recorder[pop_name] = sr
         ## Add it to internal list of populations
-        self.__populations.append(newpop)
-        self.__labels.append(label)
+        self.populations[pop_name] = newpop
+        self.labels.append(label)
     
     def connect(self, popone, poptwo, conn_specs, syn_specs):
         """
@@ -101,7 +117,7 @@ class Network:
         """
         nest.Connect(popone, poptwo, conn_spec=conn_specs, syn_spec=syn_specs)
     
-    def connect_all(self, conn_specs, synapse_type, syn_specs):
+    def connect_all(self, names, conn_specs, synapse_type, syn_specs):
         """
         Connect a vector containing populations with each other with given
         connectivity and synaptic specifications.
@@ -118,35 +134,35 @@ class Network:
         None.
 
         """
-        r = list(range(len(self.__populations)))
-        R = itertools.product(r,r)
+        r = list(range(len(self.populations)))
+        R = itertools.product(r, r)
         
         for x,y in R:
             #print(f"Connecting population {x} to population {y} with a connection probability of {conn_specs[x,y]} with synapse type {syn_specs[x,y]}")
             if synapse_type[x,y] == "E":
                 receptor_type = 1
+                w_min = 0.0
+                w_max = np.inf
             else:
                 receptor_type = 2
-            ## Draw weights
-
-            w_min = 0.0
-            w_max = np.Inf
+                w_min = np.NINF
+                w_max = 0.0
+                
             weight = nest.math.redraw(nest.random.normal(
-                mean = syn_specs[x,y],
+                mean = -syn_specs[x,y] if synapse_type[x,y] != "E" else syn_specs[x,y],
                 std=max(abs(syn_specs[x,y]*0.1), 1e-10)),
                 min=w_min,
                 max=w_max)
             delay = nest.math.redraw(nest.random.normal(
-                mean = 1.5,
-                std=abs(1.5*0.1)),
-                min=nest.resolution, # Why would we do this? -> - 0.5 * nest.resolution,
+                mean = 3.0,
+                std=abs(3.0*0.5)),
+                min=self.resolution, # Why would we do this? -> - 0.5 * nest.resolution,
                 max=np.Inf)
-            
-            
-            nest.Connect(self.__populations[x],
-                         self.__populations[y],
+
+            nest.Connect(self.populations[names[x]],
+                         self.populations[names[y]],
                          conn_spec = {'rule': 'fixed_indegree', 
-                                      'indegree': int(conn_specs[x, y] * len(self.__populations[x]))},
+                                      'indegree': int(conn_specs[x, y] * len(self.populations[names[x]]))},
                          syn_spec = {"weight": weight, "delay": delay, "receptor_type": receptor_type})
         
                 
@@ -172,8 +188,13 @@ class Network:
         """
         stimulus = nest.Create(source['type'])
         stimulus.rate = source['rate']
-        nest.Connect(stimulus, self.__populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
+        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
                                                                                                 'weight': weight})
+        
+    def add_dc_stimulation(self, source, target):
+        stimulus = nest.Create(source['type'])
+        stimulus.amplitude = source['amplitude']
+        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'})
     
     def get_pops(self):
         """
@@ -185,7 +206,7 @@ class Network:
             A list of node collections.
 
         """
-        return self.__populations
+        return self.populations
     
     def get_last_added_population(self):
         """
@@ -197,7 +218,7 @@ class Network:
             A nest node collection
 
         """
-        return self.__populations[-1]
+        return self.populations[-1]
     
     def simulate(self, t_sim):
         """
@@ -225,7 +246,7 @@ class Network:
             A list containing the labels indicating either excitatory or inhibitory populations.
 
         """
-        return self.__labels
+        return self.labels
     
     def get_nrec(self):
         """
@@ -233,11 +254,11 @@ class Network:
 
         Returns
         -------
-        __nrec : list
+        nrec : list
             List of integers
 
         """
-        return self.__nrec
+        return self.nrec
 
     def get_data(self):
         """
@@ -253,11 +274,14 @@ class Network:
         """
         ################################################
         ## Get spike data
-        spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.__spike_recorder]
+        spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.spike_recorder.values()]
         
         ################################################
-        ## Get multimeter data
-        mm_list = [nest.GetStatus(d)[0]['events'] for d in self.__multimeter]
+        ## Get multimeter data if needed
+        if not self.opt:
+            mm_list = [nest.GetStatus(d)[0]['events'] for d in self.multimeter.values()]
+        else:
+            mm_list = []
         
         return mm_list, spike_list
     
@@ -272,13 +296,14 @@ def prep_spikes(spike_list, network):
     data = []
     pops = network.get_pops()
     nrec = network.get_nrec()
+    names = list(pops.keys())
         
     ## Divide spike times to populations
     for i in range(len(pops)):
         
         spike_times = spike_list[i]
         
-        #self.IDs = np.unique(nest.GetStatus(self.__spike_recorder[i])[0]["events"]["senders"])
+        #self.IDs = np.unique(nest.GetStatus(self.spike_recorder[i])[0]["events"]["senders"])
         
         ## Create a list containing empty lists with size equal to nrec of that population.
         ## For each of those lists get the range of IDs from the population
@@ -286,7 +311,7 @@ def prep_spikes(spike_list, network):
         ## Fill in the data for the corresponding senders == IDs
         ## => 
         tmp = [[]] * nrec[i]
-        IDs = list(pops[i].get(['global_id']).values())[0]
+        IDs = list(pops[names[i]].get(['global_id']).values())[0]
         mn = min(IDs)
         mx = mn + nrec[i]
         
@@ -317,7 +342,7 @@ def prep_spikes(spike_list, network):
     
 
 # Helper functions
-def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
+def raster(spikes, rec_start, rec_stop, colors, nrec, label, suffix="", figsize=(9, 5)):
     """
     Draws the scatterplot for the spiketimes of each neuronal population as well as
     a histogram of spiketimes over all neurons.
@@ -405,7 +430,7 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, figsize=(9, 5)):
     
     plt.tight_layout(pad=1)
 
-    plt.savefig('simresults/raster.png')
+    plt.savefig(f"simresults/raster_{suffix}.png")
   
 def rate(spikes, rec_start, rec_stop):
     """
@@ -656,3 +681,12 @@ def join_results(simres):
                 
     return merged_dicts
     
+def get_spike_rate(times, params):
+    bins = (np.arange(params['transient'] / params['resolution'], params['sim_time'] / params['resolution'] + 1)
+            * params['resolution'] - params['resolution'] / 2)
+    hist, _ = np.histogram(times, bins=bins)
+    return bins, hist.astype(float)
+
+def get_mean_spike_rate(times, params):
+    times = times[times >= params['transient']]
+    return times.size /  (params['sim_time'] - params['transient']) * 1000

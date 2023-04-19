@@ -52,6 +52,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-statsmodels \
     python3-tk \
     python-dev \
+    bison \
+    flex \
+    libhdf5-dev \
     vera++ \
     wget  && \
     apt-get autoremove -y && \
@@ -62,30 +65,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 -m pip install --upgrade pip setuptools wheel
 
 
-# Install music
-#RUN wget https://github.com/INCF/MUSIC/archive/master.tar.gz && \
-#    tar -zxf master.tar.gz && \
-#    mkdir music-build music-install && \
-#    cd MUSIC-master && \
-#    sh ./autogen.sh && \
-#    cd ../music-build && \
-#    ../MUSIC-master/configure --prefix=/opt/music-install && \
-#    make && \
-#    make install && \
-#    cd / && \
-#    rm master.tar.gz
+## Install Neuron
 
-# Install libneurosim
-# RUN git clone https://github.com/INCF/libneurosim.git libneurosim && \
-#    cd libneurosim && \
-#    chmod +x autogen.sh && \
-#    ./autogen.sh && \
-#    chmod +x configure && \
-#    ./configure --prefix=/opt/libneurosim-install --with-python=3 && \
-#    make && \
-#    make install
 
-# Install NEST
+
+## Install NEST
 RUN git clone https://github.com/nest/nest-simulator.git && \
   cd nest-simulator && \
   git checkout master && \
@@ -113,6 +97,25 @@ RUN git clone https://github.com/nest/nest-simulator.git && \
   source bin/nest_vars.sh && \
   make install
 
+## Install Neuron
+RUN git clone --depth 1 -b 8.0.0 https://github.com/neuronsimulator/nrn.git /usr/src/nrn
+RUN mkdir nrn-bld
+
+RUN cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/nrn/ \
+  -DCURSES_NEED_NCURSES=ON \
+  -DNRN_ENABLE_INTERVIEWS=OFF \
+  -DNRN_ENABLE_MPI=ON \
+  -DNRN_ENABLE_RX3D=OFF \
+  -DNRN_ENABLE_PYTHON=ON \
+  -S /usr/src/nrn \
+  -B nrn-bld
+
+RUN cmake --build nrn-bld --parallel 4 --target install
+
+# clean up
+RUN rm -r /usr/src/nrn
+RUN rm -r nrn-bld
+
 ###############################################################################
 
 FROM ubuntu:focal
@@ -125,6 +128,7 @@ ENV TERM=xterm \
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
+        git \
         libpcre3 \
         libpcre3-dev \
         gosu \
@@ -170,16 +174,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      mkdir code && \
      mkdir data
 
-COPY --from=buildermaster /opt/nest /opt/nest
+# Add NEST binary folder to PATH
+RUN echo "source /opt/nest/bin/nest_vars.sh" >> root/.bashrc
+
+# add nrnpython to PYTHONPATH
+ENV PYTHONPATH /opt/nrn/lib/python:${PYTHONPATH}
+
+# ---- pip install some additional things
+RUN pip install pymoo
+RUN pip install git+https://github.com/NeuralEnsemble/parameters
+
+# ---- install NESTML -----
+RUN pip install antlr4-python3-runtime
+RUN pip install git+https://github.com/nest/nestml.git
+
+# ---- install LFPykernels (main branch) -----
+RUN pip install git+https://github.com/LFPy/LFPykernels
+
+
+COPY --from=buildermaster /opt /opt
 
 COPY . /code
 
 EXPOSE 5000 8080
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh && \
-        chmod +x /code/simulation/run.py
-
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
-#ENTRYPOINT ["/bin/bash"]

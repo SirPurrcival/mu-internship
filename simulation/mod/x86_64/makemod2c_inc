@@ -1,0 +1,33 @@
+
+./exp2synI.c: ../exp2synI.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd ".."; MODLUNIT=$(NRNUNITS) $(NOCMODL) exp2synI.mod -o "/home/meowlin/projects/mu_internship/simulation/mod/x86_64")
+
+./exp2synI.o: ./exp2synI.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I".." $(INCLUDES) -fPIC -c $< -o $@
+
+./Ih_linearized_v2_frozen.c: ../Ih_linearized_v2_frozen.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd ".."; MODLUNIT=$(NRNUNITS) $(NOCMODL) Ih_linearized_v2_frozen.mod -o "/home/meowlin/projects/mu_internship/simulation/mod/x86_64")
+
+./Ih_linearized_v2_frozen.o: ./Ih_linearized_v2_frozen.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I".." $(INCLUDES) -fPIC -c $< -o $@
+
+./NaTa_t_frozen.c: ../NaTa_t_frozen.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd ".."; MODLUNIT=$(NRNUNITS) $(NOCMODL) NaTa_t_frozen.mod -o "/home/meowlin/projects/mu_internship/simulation/mod/x86_64")
+
+./NaTa_t_frozen.o: ./NaTa_t_frozen.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I".." $(INCLUDES) -fPIC -c $< -o $@
+
+./SKv3_1_frozen.c: ../SKv3_1_frozen.mod
+	@printf " -> $(C_GREEN)NMODL$(C_RESET) $<\\n"
+	(cd ".."; MODLUNIT=$(NRNUNITS) $(NOCMODL) SKv3_1_frozen.mod -o "/home/meowlin/projects/mu_internship/simulation/mod/x86_64")
+
+./SKv3_1_frozen.o: ./SKv3_1_frozen.c
+	@printf " -> $(C_GREEN)Compiling$(C_RESET) $<\\n"
+	$(COMPILE) -I".." $(INCLUDES) -fPIC -c $< -o $@
+
