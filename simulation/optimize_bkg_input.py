@@ -60,7 +60,7 @@ def objective_function(**args):
     ## Define target values
     target_irregularity = 0.9
     target_synchrony    = 0.05
-    target_firing_rate  = 2
+    target_firing_rate  = 5
     
     ## Compute scores for how close to our target values we got this run
     scores = [(target_irregularity - irregularity[i])**2 + (synchrony[i] - target_synchrony)**2 + (firing_rate[i] - target_firing_rate)**2 for i in list(range(len(irregularity)))]
@@ -77,7 +77,7 @@ def optimize_network(optimizer):
     
     optimizer.maximize(
             init_points=40,
-            n_iter=100,
+            n_iter=120,
             acquisition_function=uf
         )
     # best = None
