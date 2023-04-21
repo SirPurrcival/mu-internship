@@ -6,7 +6,7 @@ import pickle
 from setup import setup
 import os
 import time
-
+from analysis import analysis
 
 def objective_function(**args):
     # Set the network parameters based on the input values
@@ -49,7 +49,7 @@ def objective_function(**args):
     #process.stdout.close()
     #process.stderr.close()
     
-    # Read the results from the file
+    # Read results from file
     with open("sim_results", 'rb') as f:
         data = pickle.load(f)
     irregularity, synchrony, firing_rate = data
@@ -77,7 +77,7 @@ def optimize_network(optimizer):
     
     optimizer.maximize(
             init_points=40,
-            n_iter=120,
+            n_iter=180,
             acquisition_function=uf
         )
     # best = None

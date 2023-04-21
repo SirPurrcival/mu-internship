@@ -135,7 +135,7 @@ def run_network():
             with open("sim_results", 'wb') as f:
                 data = ([10000]*17, [10000]*17, [10000]*17)
                 pickle.dump(data, f)
-            return data
+            #return data
         ## Exit normally
         elif simulation_time >= params['sim_time']:
             print("Simulation done!")
@@ -159,30 +159,37 @@ def run_network():
     ## end parallelization here?
     ## Gather the results from the simulations
     
+    # mm_res    = comm.gather(mmdata, root=0)
+    # spike_res = comm.gather(spikes, root=0)
+    with open(f"mmdata_{rank}", 'wb') as f:
+        pickle.dump(mmdata, f)
+    with open(f"spikes_{rank}", 'wb') as f:
+        pickle.dump(spikes, f)
+    if params['verbose']:
+        print(f"rank {rank} finished!")
+    
     if params['verbose']:
         print("Done, gathering results and preparing data...")
     
-        
-    # Synchronize all processes
     comm.barrier()
     
-    # Gather results
+    ## Gather results and write to disk
     if rank == 0:
-        mm_res    = comm.gather(mmdata, root=0)
-        spike_res = comm.gather(spikes, root=0)
-    else:
-        comm.gather(mmdata, root=0)
-        comm.gather(spikes, root=0)
-    
-    # mm_res    = comm.gather(mmdata, root=0)
-    # spike_res = comm.gather(spikes, root=0)
-    
-    
-    
-    if rank == 0:
+        ## read in results
+        mm_file_names = [f for f in os.listdir() if os.path.isfile(f) and f.startswith("mmdata_")]
+        spike_file_names = [f for f in os.listdir() if os.path.isfile(f) and f.startswith("spikes_")]
+        
+        spikes_gathered = []
+        mmdata_gathered = []
+        for i in range(len(spike_file_names)):
+            if params['calc_lfp']:
+                with open(f"mmdata_{i}", 'rb') as f:
+                    mmdata_gathered.append(pickle.load(f))
+            with open(f"spikes_{i}", 'rb') as f:
+                spikes_gathered.append(pickle.load(f))
         
         ## join the results
-        spikes = join_results(spike_res)
+        spikes = join_results(spikes_gathered)
         
         ## Prepare data for graphing
         spikes = prep_spikes(spikes, network)
@@ -206,12 +213,15 @@ def run_network():
             
             if params['verbose']:
                 print(f"Time required for graphing grid: {time.time() - st}")
-                print("Done! Estimating LFPs per layer...")
+                
             
             #################################
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
+                
+                if params['verbose']:
+                    print("Done! Estimating LFPs per layer...")
                 
                 ## Only care about synaptic currents if we do LFPs
                 mmdata = join_results(mm_res)
@@ -275,16 +285,16 @@ def run_network():
                 
                 newlst = np.array([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
                 
-        irregularity = [get_irregularity(population) for population in spikes]
-        firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spikes]
-        synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spikes]
-        
-        ## Write results to file
-        with open("sim_results", 'wb') as f:
-            data = (irregularity, synchrony, firing_rate)
-            pickle.dump(data, f)
-        return (irregularity, synchrony, firing_rate)
+    irregularity = [get_irregularity(population) for population in spikes]
+    firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spikes]
+    synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spikes]
+    
+    ## Write results to file
+    with open("sim_results", 'wb') as f:
+        data = (irregularity, synchrony, firing_rate)
+        pickle.dump(data, f)
+    return (irregularity, synchrony, firing_rate)
      
 #from setup import setup
 #setup()
-nya = run_network()
+run_network()
