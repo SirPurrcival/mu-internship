@@ -15,7 +15,7 @@ from functions import Network, plot_LFPs, raster, rate, approximate_lfp_timecour
 #import icsd
 import time
 from prep_LFP_kernel import prep_LFP_kernel
-
+import os
 import pickle
 
 def run_network():
@@ -161,9 +161,10 @@ def run_network():
     
     # mm_res    = comm.gather(mmdata, root=0)
     # spike_res = comm.gather(spikes, root=0)
-    with open(f"mmdata_{rank}", 'wb') as f:
-        pickle.dump(mmdata, f)
-    with open(f"spikes_{rank}", 'wb') as f:
+    if params['calc_lfp']:
+        with open(f"tmp/mmdata_{rank}", 'wb') as f:
+            pickle.dump(mmdata, f)
+    with open(f"tmp/spikes_{rank}", 'wb') as f:
         pickle.dump(spikes, f)
     if params['verbose']:
         print(f"rank {rank} finished!")
@@ -176,16 +177,16 @@ def run_network():
     ## Gather results and write to disk
     if rank == 0:
         ## read in results
-        mm_file_names = [f for f in os.listdir() if os.path.isfile(f) and f.startswith("mmdata_")]
-        spike_file_names = [f for f in os.listdir() if os.path.isfile(f) and f.startswith("spikes_")]
+        mm_file_names = [f for f in os.listdir("tmp") if f.startswith("mmdata_")]
+        spike_file_names = [f for f in os.listdir("tmp") if f.startswith("spikes_")]
         
         spikes_gathered = []
         mmdata_gathered = []
         for i in range(len(spike_file_names)):
             if params['calc_lfp']:
-                with open(f"mmdata_{i}", 'rb') as f:
+                with open(f"tmp/mmdata_{i}", 'rb') as f:
                     mmdata_gathered.append(pickle.load(f))
-            with open(f"spikes_{i}", 'rb') as f:
+            with open(f"tmp/spikes_{i}", 'rb') as f:
                 spikes_gathered.append(pickle.load(f))
         
         ## join the results
@@ -224,7 +225,7 @@ def run_network():
                     print("Done! Estimating LFPs per layer...")
                 
                 ## Only care about synaptic currents if we do LFPs
-                mmdata = join_results(mm_res)
+                mmdata = join_results(mmdata_gathered)
                 
                 print(network.multimeters)
                 
@@ -285,15 +286,15 @@ def run_network():
                 
                 newlst = np.array([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
                 
-    irregularity = [get_irregularity(population) for population in spikes]
-    firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spikes]
-    synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spikes]
+        irregularity = [get_irregularity(population) for population in spikes]
+        firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spikes]
+        synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spikes]
     
-    ## Write results to file
-    with open("sim_results", 'wb') as f:
-        data = (irregularity, synchrony, firing_rate)
-        pickle.dump(data, f)
-    return (irregularity, synchrony, firing_rate)
+        ## Write results to file
+        with open("sim_results", 'wb') as f:
+            data = (irregularity, synchrony, firing_rate)
+            pickle.dump(data, f)
+        return (irregularity, synchrony, firing_rate)
      
 #from setup import setup
 #setup()
