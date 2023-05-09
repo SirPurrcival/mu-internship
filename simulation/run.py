@@ -67,18 +67,7 @@ def run_network():
         print(f"Time required for setup: {time.time() - st}")
         print("Populating network...")
     for i in range(len(params['layer_type'])):
-        network.addpop('glif_psc', params['layer_type'][i] , int(num_neurons[i]), params['cell_type'][params['layer_type'][i]], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
-    
-    ##L1 | L23e, i | L4e,i | L5e,i | L6e,i
-    #ext_rates = np.array([1500, 1600, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * 8 * Kscale ## original
-    
-    # relative_weight = [1,                                                                                       ## Layer 1
-    #                     1, 3876/(3876 + 2807 + 6683), 2807/(3876 + 2807 + 6683), 6683/(3876 + 2807 + 6683),      ## Layer 23
-    #                     1, 9502/(9502+5455+2640), 5455/(9502+5455+2640), 2640/(9502+5455+2640),                  ## Layer 4
-    #                     1, 2186/(2186+1958+410), 1958/(2186+1958+410), 410/(2186+1958+410),                      ## Layer 5
-    #                     1, 1869/(1869+1869+325), 1869/(1869+1869+325), 325/(1869+1869+325)
-    #                     ]
-    #ext_rates = np.array([1500, 1200, 1500, 1500, 1500, 2100, 1900, 1900, 1900, 2000, 1900, 1900, 1900, 2900, 2100, 2100, 2100]) * relative_weight * 8 * Kscale
+        network.addpop('iaf_psc_exp', params['layer_type'][i] , int(num_neurons[i]), params['cell_params'], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
     
     # # add stimulation
     if params['verbose']:
@@ -89,15 +78,15 @@ def run_network():
     
     ## Add DC stimulation
     th_input = params['th_in']
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", weight=1.0)
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Pvalb", weight=1.0)
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Sst", weight=1.0)
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Htr3a", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Pvalb", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Sst", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Htr3a", weight=1.0)
     
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_E", weight=1.0)
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Pvalb", weight=1.0)
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Sst", weight=1.0)
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Htr3a", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_E", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Pvalb", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Sst", weight=1.0)
+    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Htr3a", weight=1.0)
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
@@ -152,18 +141,13 @@ def run_network():
         print("Done! Fetching data...")
     
     ## Extract data from the network
-    mmdata, spikes = network.get_data()
+    spikes = network.get_data()
     if params['verbose']:
         print(f"Time required for fetching data: {time.time() - st}")
     
     ## end parallelization here?
     ## Gather the results from the simulations
-    
-    # mm_res    = comm.gather(mmdata, root=0)
-    # spike_res = comm.gather(spikes, root=0)
-    if params['calc_lfp']:
-        with open(f"tmp/mmdata_{rank}", 'wb') as f:
-            pickle.dump(mmdata, f)
+
     with open(f"tmp/spikes_{rank}", 'wb') as f:
         pickle.dump(spikes, f)
     if params['verbose']:
@@ -177,15 +161,10 @@ def run_network():
     ## Gather results and write to disk
     if rank == 0:
         ## read in results
-        mm_file_names = [f for f in os.listdir("tmp") if f.startswith("mmdata_")]
         spike_file_names = [f for f in os.listdir("tmp") if f.startswith("spikes_")]
         
         spikes_gathered = []
-        mmdata_gathered = []
         for i in range(len(spike_file_names)):
-            if params['calc_lfp']:
-                with open(f"tmp/mmdata_{i}", 'rb') as f:
-                    mmdata_gathered.append(pickle.load(f))
             with open(f"tmp/spikes_{i}", 'rb') as f:
                 spikes_gathered.append(pickle.load(f))
         
@@ -203,7 +182,8 @@ def run_network():
             print("Graphing spikes...")
             ## Define colors used in the raster plot per neuron population based on label
             label = network.get_labels()
-            colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
+            ##colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
+            colors = ["b" if l == "E" else "r" for l in label]
             
             ## Plot spike data
             raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(th_input)):0>4}")
@@ -224,67 +204,10 @@ def run_network():
                 if params['verbose']:
                     print("Done! Estimating LFPs per layer...")
                 
-                ## Only care about synaptic currents if we do LFPs
-                mmdata = join_results(mmdata_gathered)
-                
                 print(network.multimeters)
                 
                 plot_LFPs(network, params, H_YX, num_neurons)                
                 
-                times = np.unique(mmdata[0]["times"])
-                
-                ## append labels to data
-                for i in range(len(mmdata)):
-                    mmdata[i].update( {"label":label[i]})
-                
-                ## Approximate the lfp timecourse per layer
-                lfp_tc_l1 = approximate_lfp_timecourse([mmdata[0]], times)
-                if params['verbose']:
-                    print("Layer 1 finished")
-                lfp_tc_l23 = approximate_lfp_timecourse(mmdata[1:5], times)
-                if params['verbose']:
-                    print("Layer 2/3 finished")
-                lfp_tc_l4 = approximate_lfp_timecourse(mmdata[5:9], times)
-                if params['verbose']:
-                    print("Layer 4 finished")
-                lfp_tc_l5 = approximate_lfp_timecourse(mmdata[9:13], times)
-                if params['verbose']:
-                    print("Layer 5 finished")
-                lfp_tc_l6 = approximate_lfp_timecourse(mmdata[13:17], times)
-                if params['verbose']:
-                    print("Layer 6 finished, plotting...")
-                    print(f"Time required for layer estimation procedure: {time.time() - st}")
-                
-                ## Correct for data loss during lfp approximation 
-                ## (6ms due to methodological reasons, see approximation function)
-                t = np.argwhere(times - min(times) >= 6)
-                t = t.reshape(t.shape[0],)
-                
-                ## plot the timecourse in the recorded time window
-                fig, ax = plt.subplots()
-                ax.plot(t, lfp_tc_l1, label = "Layer 1")
-                ax.plot(t, lfp_tc_l23, label = "Layer 2/3")
-                ax.plot(t, lfp_tc_l4, label = "Layer 4")
-                ax.plot(t, lfp_tc_l5, label = "Layer 5")
-                ax.plot(t, lfp_tc_l6, label = "Layer 6")
-                plt.show()
-                
-                legend = ax.legend(loc='right', bbox_to_anchor=(1.3, 0.7), shadow=False, ncol=1)
-                plt.show()
-                plt.savefig('simresults/LFP_approximation.png')
-                
-                temp = np.vstack([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
-                
-                plt.figure()
-                plt.imshow(temp, aspect="auto")
-                plt.show()
-                plt.savefig('simresults/vstack.png')
-                
-                if params['verbose']:
-                    print(f"Time required for plotting and final time: {time.time() - st}")
-                    print("All done!")
-                
-                newlst = np.array([lfp_tc_l1, lfp_tc_l23, lfp_tc_l4, lfp_tc_l5, lfp_tc_l6])
                 
         irregularity = [get_irregularity(population) for population in spikes]
         firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spikes]

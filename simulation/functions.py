@@ -13,7 +13,6 @@ import scipy.signal as ss
 class Network:
     def __init__(self, p):
         self.populations = {}
-        self.multimeter = {}
         self.spike_recorder = {}
         self.labels = []
         self.nrec = []
@@ -21,6 +20,7 @@ class Network:
         self.rec_stop = p['rec_stop']
         self.resolution = p['resolution']
         self.opt = p['opt_run']
+        self.g = p['g']
         ## Monitors spiking through the first 200ms, if the spiking rate is
         ## unrealistically high we abort this attempt
         self.test_probe = nest.Create("spike_recorder")
@@ -63,26 +63,16 @@ class Network:
         
         ## Create the neuronal population
         newpop = nest.Create(neuron_type, num_neurons, neuron_params)
+        
+        ## Change around V_m as done in Potjans & Diesmann
+        nest.SetStatus(newpop, 'V_m', np.random.normal(-58., 10.0, num_neurons))
+        
+            
         ## If record_from_pop is true, also connect the spike recorder and multimeter to it
         if record_from_pop:
             ## Create recording devices
             sr = nest.Create("spike_recorder")
             
-            ## Only record if necessary
-            if not self.opt:
-                mm = nest.Create("multimeter",
-                             params={"interval": self.resolution,
-                             "record_from": ["I_syn"]})
-                
-                ## Set start/stop times
-                mm.start = self.rec_start
-                mm.stop = self.rec_stop
-                
-                ## Connect devices to the new population
-                nest.Connect(mm, newpop[:nrec])
-                
-                ## append to dictionary for data extraction later
-                self.multimeter[pop_name] = mm
             
             ## Set start/stop times
             sr.start = self.rec_start
@@ -152,21 +142,21 @@ class Network:
                 w_max = 0.0
                 
             weight = nest.math.redraw(nest.random.normal(
-                mean = -syn_specs[x,y] if synapse_type[x,y] != "E" else syn_specs[x,y],
+                mean = -self.g * syn_specs[x,y] if synapse_type[x,y] != "E" else syn_specs[x,y],
                 std=max(abs(syn_specs[x,y]*0.1), 1e-10)),
                 min=w_min,
                 max=w_max)
             delay = nest.math.redraw(nest.random.normal(
-                mean = 3.0,
-                std=abs(3.0*0.5)),
-                min=self.resolution, # Why would we do this? -> - 0.5 * nest.resolution,
+                mean = 1.5 if synapse_type[x,y] == "E" else 0.8,
+                std=abs(1.5*0.5) if synapse_type[x,y] == "E" else abs(0.8*0.5)),
+                min=self.resolution, 
                 max=np.Inf)
 
             nest.Connect(self.populations[names[x]],
                          self.populations[names[y]],
                          conn_spec = {'rule': 'fixed_indegree', 
                                       'indegree': int(conn_specs[x, y] * len(self.populations[names[x]]))},
-                         syn_spec = {"weight": weight, "delay": delay, "receptor_type": receptor_type})
+                         syn_spec = {"weight": weight, "delay": delay})#, "receptor_type": receptor_type})
         
                 
 
@@ -191,8 +181,9 @@ class Network:
         """
         stimulus = nest.Create(source['type'])
         stimulus.rate = source['rate']
-        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={'receptor_type': 1,
-                                                                                                'weight': weight})
+        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={#'receptor_type': 1,
+                                                                                                'weight': weight,
+                                                                                                'delay' : 1.5})
         
     def add_dc_stimulation(self, source, target):
         stimulus = nest.Create(source['type'])
@@ -279,14 +270,8 @@ class Network:
         ## Get spike data
         spike_list = [nest.GetStatus(spk)[0]['events'] for spk in self.spike_recorder.values()]
         
-        ################################################
-        ## Get multimeter data if needed
-        if not self.opt:
-            mm_list = [nest.GetStatus(d)[0]['events'] for d in self.multimeter.values()]
-        else:
-            mm_list = []
         
-        return mm_list, spike_list
+        return spike_list
     
     def create_fir_filters(self, H_YX, params):
         """Create sets of FIR filters for each signal probe
@@ -478,7 +463,7 @@ def raster(spikes, rec_start, rec_stop, colors, nrec, label, suffix="", figsize=
     ## Add y-tick labels indicating layers
     nrec = np.cumsum(nrec)
     ticks = dict()
-    layer = ["Layer 1", "Layer 2/3", "Layer 4", "Layer 5", "Layer 6"]
+    layer = ["Layer 2/3", "Layer 4", "Layer 5", "Layer 6"]
     l = 0
     for e in range(len(nrec)):
         if e == 0:
