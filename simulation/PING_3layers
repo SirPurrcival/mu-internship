@@ -1,0 +1,277 @@
+####
+# Based on Izhikevich neuron model. Synaptic connections with AMPA and GABA 
+# receptors. Three interconnected networks representing a supragranular, 
+# granular, and infragranular layer, adjusted according to macaque V1 specs.
+####
+
+
+## Import libraries
+import numpy as np
+import pylab as plt
+#import IPython
+
+
+#### NETWORK ####
+
+## Sizes
+Ne1 = 237      # 1 = supragranular (L2/3)
+Ne2 = 352      # 2 = granular (L4)
+Ne3 = 203      # 3 = infragranular (L5, L6)
+Ni1 = 67    
+Ni2 = 88    
+Ni3 = 45  
+Ne  = Ne1 + Ne2 + Ne3
+Ni  = Ni1 + Ni2 + Ni3
+Ntot = Ne+Ni
+
+
+#### INPUT ####
+
+## Input current values
+inpute_net1 = 9      # units in pA
+inpute_net2 = 12
+inpute_net3 = 12
+inputi_net1 = 4
+inputi_net2 = 4
+inputi_net3 = 4
+
+## Mean and variance of Gaussian-distributed input currents
+mean_E = [inpute_net1, inpute_net2, inpute_net3]
+var_E  = 3
+mean_I = [inputi_net1, inputi_net2, inputi_net3]
+var_I  = 3
+
+
+#### MODEL ####
+
+## Model parameters
+a = np.concatenate([0.02 * np.ones(Ne), 0.1*np.ones(Ni)])   # Time scale of recovery variable
+b = np.concatenate([0.2  * np.ones(Ne), 0.2*np.ones(Ni)])   # Sensitivity of recovery variable
+c = np.concatenate([-65  * np.ones(Ne), -65*np.ones(Ni)])   # Reset value of membrane potential
+d = np.concatenate([8    * np.ones(Ne), 2  *np.ones(Ni)])   # Reset value of recovery variable
+v = -65 * np.ones(Ne + Ni)                                  # Initial values of membrane potential
+u = b * v                                                   # Initial values of recovery variable
+
+## AMPA and GABA
+gampa = np.zeros(Ne)      # Conductances
+gaba  = np.zeros(Ni)
+decay_ampa = 1            # decay and rise are parameters for receptor dynamics
+decay_gaba = 7
+rise_ampa  = 0.15
+rise_gaba  = 0.2
+
+
+#### CONNECTIVITY ####
+
+## Synaptic weights matrix
+S = np.zeros((Ntot, Ntot))
+
+## Indices for each population in each layer
+E1_idx = np.arange(Ne1)
+I1_idx = np.arange(Ne1, Ne1+Ni1)
+E2_idx = np.arange(Ne1+Ni1, Ne1+Ni1+Ne2)
+I2_idx = np.arange(Ne1+Ni1+Ne2, Ne1+Ni1+Ne2+Ni2)
+E3_idx = np.arange(Ne1+Ni1+Ne2+Ni2, Ne1+Ni1+Ne2+Ni2+Ne3)
+I3_idx = np.arange(Ne1+Ni1+Ne2+Ni2+Ne3, Ntot)
+
+
+#### Within ####
+
+## Connectivity within layers
+# EE = 0.05
+# EI = 0.4       # !! this is inh to exc
+# IE = 0.3       # !! this is exc to inh
+# II = 0.2
+EE = 0.136
+EI = 0.238     # !! this is inh to exc
+IE = 0.278     # !! this is exc to inh
+II = 0.273
+
+## Within supragranular
+S[np.ix_(E1_idx, E1_idx)] = EE * np.random.randn(Ne1, Ne1)
+S[np.ix_(I1_idx, E1_idx)] = EI * np.random.randn(Ni1, Ne1)    # !! inh to exc within I1
+S[np.ix_(E1_idx, I1_idx)] = IE * np.random.randn(Ne1, Ni1)    # !! exc to inh within E1
+S[np.ix_(I1_idx, I1_idx)] = II * np.random.randn(Ni1, Ni1)
+
+## Within granular
+S[np.ix_(E2_idx, E2_idx)] = EE * np.random.randn(Ne2, Ne2)
+S[np.ix_(I2_idx, E2_idx)] = EI * np.random.randn(Ni2, Ne2)    # !! inh to exc within I2
+S[np.ix_(E2_idx, I2_idx)] = IE * np.random.randn(Ne2, Ni2)    # !! exc to inh within E2
+S[np.ix_(I2_idx, I2_idx)] = II * np.random.randn(Ni2, Ni2)
+
+## Within infragranular
+S[np.ix_(E3_idx, E3_idx)] = EE * np.random.randn(Ne3, Ne3)
+S[np.ix_(I3_idx, E3_idx)] = EI * np.random.randn(Ni3, Ne3)    # !! inh to exc within I3
+S[np.ix_(E3_idx, I3_idx)] = IE * np.random.randn(Ne3, Ni3)    # !! exc to inh within E3
+S[np.ix_(I3_idx, I3_idx)] = II * np.random.randn(Ni3, Ni3)
+
+
+#### Between ####
+
+## Connectivity between layers
+cop_val = 1
+
+## Connectivity strength E>I E>E I>E I>I
+C12 = cop_val*0.249    # E1 > I2      # E -> I
+C13 = cop_val*0.183    # E1 > I3
+C21 = cop_val*0.300    # E2 > I1
+C23 = cop_val*0.279    # E2 > I3
+C31 = cop_val*0.150    # E3 > I1
+C32 = cop_val*0.150    # E3 > I2
+
+C45 = cop_val*0.016    # E1 > E2      # E -> E
+C46 = cop_val*0.083    # E1 > E3
+C54 = cop_val*0.140    # E2 > E1
+C56 = cop_val*0.136    # E2 > E3
+C64 = cop_val*0.021    # E3 > E1
+C65 = cop_val*0.007    # E3 > E2
+
+C78 = cop_val*0.298    # I1 > E2      # I -> E
+C79 = cop_val*0.387    # I1 > E3
+C87 = cop_val*0.750    # I2 > E1
+C89 = cop_val*0.114    # I2 > E3
+C97 = cop_val*0.269    # I3 > E1
+C98 = cop_val*0.186    # I3 > E2
+
+C1011 = cop_val*0.450    # I1 > I2      # I -> I
+C1012 = cop_val*0.073    # I1 > I3
+C1110 = cop_val*0.691    # I2 > I1
+C1112 = cop_val*0.301    # I2 > I3
+C1210 = cop_val*0.322    # I3 > I1
+C1211 = cop_val*0.250    # I3 > I2
+
+## Between Es and Is
+S[np.ix_(I2_idx, E1_idx)] = C12 * np.random.randn(Ni2, Ne1)      # E -> I
+S[np.ix_(I3_idx, E1_idx)] = C13 * np.random.randn(Ni3, Ne1)
+S[np.ix_(I1_idx, E2_idx)] = C21 * np.random.randn(Ni1, Ne2)
+S[np.ix_(I3_idx, E2_idx)] = C23 * np.random.randn(Ni3, Ne2)
+S[np.ix_(I1_idx, E3_idx)] = C31 * np.random.randn(Ni1, Ne3)
+S[np.ix_(I2_idx, E3_idx)] = C32 * np.random.randn(Ni2, Ne3)
+
+## Between Es and Es
+S[np.ix_(E2_idx, E1_idx)] = C45 * np.random.randn(Ne2, Ne1)      # E -> E
+S[np.ix_(E3_idx, E1_idx)] = C46 * np.random.randn(Ne3, Ne1)
+S[np.ix_(E1_idx, E2_idx)] = C54 * np.random.randn(Ne1, Ne2)
+S[np.ix_(E3_idx, E2_idx)] = C56 * np.random.randn(Ne3, Ne2)
+S[np.ix_(E1_idx, E3_idx)] = C64 * np.random.randn(Ne1, Ne3)
+S[np.ix_(E2_idx, E3_idx)] = C65 * np.random.randn(Ne2, Ne3)
+
+## Between Is and Es
+S[np.ix_(E2_idx, I1_idx)] = C78 * np.random.randn(Ne2, Ni1)      # I -> E
+S[np.ix_(E3_idx, I1_idx)] = C79 * np.random.randn(Ne3, Ni1)
+S[np.ix_(E1_idx, I2_idx)] = C87 * np.random.randn(Ne1, Ni2)
+S[np.ix_(E3_idx, I2_idx)] = C89 * np.random.randn(Ne3, Ni2)
+S[np.ix_(E1_idx, I3_idx)] = C97 * np.random.randn(Ne1, Ni3)
+S[np.ix_(E2_idx, I3_idx)] = C98 * np.random.randn(Ne2, Ni3)
+
+## Between Is and Is
+S[np.ix_(I2_idx, I1_idx)] = C1011 * np.random.randn(Ni2, Ni1)      # I -> I
+S[np.ix_(I3_idx, I1_idx)] = C1012 * np.random.randn(Ni3, Ni1)
+S[np.ix_(I1_idx, I2_idx)] = C1110 * np.random.randn(Ni1, Ni2)
+S[np.ix_(I3_idx, I2_idx)] = C1112 * np.random.randn(Ni3, Ni2)
+S[np.ix_(I1_idx, I3_idx)] = C1210 * np.random.randn(Ni1, Ni3)
+S[np.ix_(I2_idx, I3_idx)] = C1211 * np.random.randn(Ni2, Ni3)
+
+#### SIMULATION ####
+
+## Simulation parameters
+simulation_time = 1000
+dt = 1
+
+## Spikes storage
+spikes2 = [[]]*(Ne+Ni)      # storage for spike times for each neuron
+spikes = []                 # list to store neurons that have spiked at each time step
+
+## Matrices to hold membrane potential V, recovery variable U, and firing status F
+V = np.zeros((Ntot, int(simulation_time/dt)))
+U = np.zeros((Ntot, int(simulation_time/dt)))
+F = np.zeros((Ntot, int(simulation_time/dt)))
+
+## Simulation
+for t in range(int(simulation_time/dt)):
+    I = np.concatenate([np.random.normal(mean_E[0], var_E, Ne1),       # array of input currents for each neuron. I is then used to update the membrane potential of each neuron
+                        np.random.normal(mean_E[1], var_I, Ne2),
+                        np.random.normal(mean_E[2], var_E, Ne3),
+                        np.random.normal(mean_I[0], var_E, Ni1),
+                        np.random.normal(mean_I[1], var_I, Ni2),
+                        np.random.normal(mean_E[2], var_E, Ni3)])      # Thalamic input
+    
+    ## indices of spikes; identifies the neurons that fired at this time step
+    fired = np.where(v >= 30)[0]
+    
+    ## Loop records the time of firing for each neuron that fired
+    for spike in fired:
+        if t == 3:
+            print(f"appending {t} in {spike}")
+        spikes2[spike].append(t)
+    
+    spikes.append(fired)                      # firing times recorded in 'spikes'
+    v[fired] = c[fired]                       # membrane potentials of fired neurons are reset to their respective reset values
+    u[fired] = u[fired] + d[fired]            # recovery variables of fires neurons are increased by their respective reset values
+    
+    ## Updating AMPA and GABA conductances according to receptor dynamics
+    dgampa = 0.3 * (((1 + np.tanh((v[:Ne]/10) + 2))/2) * (1-gampa)/rise_ampa - gampa/decay_ampa)
+    gampa = gampa + dt * dgampa 
+    dgaba = 0.3 * (((1 + np.tanh((v[Ne:]/10) + 2))/2) * (1-gaba)/rise_gaba - gaba/decay_gaba)
+    gaba = gaba + dt * dgaba
+    
+    ## Total input current to each neuron updated by adding synaptic current (synaptic weights S * conductances)
+    I = I + np.dot(S, np.concatenate([gampa, gaba]))
+    
+    ## Membrane potentials and recovery variables updated according to the Izhikevich model
+    v = v + 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)            # step 0.5 ms
+    v = v + 0.5 * (0.04 * v**2 + 5 * v + 140 - u + I)            # for numerical
+    u = u + a * (b * v - u)                                      # stability
+
+    ## Recording to
+    V[:, t] = v
+    U[:, t] = u
+    F[fired, t] = 1
+
+
+#### RESULTS ####
+
+
+#### Descriptive ###
+
+## Spikes
+plt.figure()
+ax1 = plt.subplot(311)
+ax1.set_xlim([300, 1000])
+plt.title('Spikes')
+plt.imshow(F, aspect='auto', cmap='nipy_spectral')#, extent=[300, 1000, 0, F.shape[0]])
+
+## Membrane potential
+ax2 = plt.subplot(312)
+ax2.set_xlim([300, 1000])
+plt.title('Membrane potential')
+plt.plot(np.mean(V[E1_idx, :], axis=0), color='tab:blue', linewidth=0.5, linestyle='-',  label='E1')
+plt.plot(np.mean(V[E2_idx, :], axis=0), color='tab:blue', linewidth=0.5, linestyle='--', label='E2')
+plt.plot(np.mean(V[E3_idx, :], axis=0), color='tab:blue', linewidth=0.5, linestyle=':', label='E3')
+plt.plot(np.mean(V[I1_idx, :], axis=0), color='tab:red',  linewidth=0.5, linestyle='-',  label='I1')
+plt.plot(np.mean(V[I2_idx, :], axis=0), color='tab:red',  linewidth=0.5, linestyle='--', label='I2')
+plt.plot(np.mean(V[I3_idx, :], axis=0), color='tab:red',  linewidth=0.5, linestyle=':', label='I3')
+plt.legend()
+
+## Recovery variable
+ax3 = plt.subplot(313)
+ax3.set_xlim([300, 1000])
+plt.title('Recovery variable')
+plt.plot(np.mean(U[E1_idx, :], axis=0), color='tab:blue', linewidth=0.5, linestyle='-',  label='E1')
+plt.plot(np.mean(U[E2_idx, :], axis=0), color='tab:blue', linewidth=0.5, linestyle='--', label='E2')
+plt.plot(np.mean(U[E3_idx, :], axis=0), color='tab:blue', linewidth=0.5, linestyle=':', label='E3')
+plt.plot(np.mean(U[I1_idx, :], axis=0), color='tab:red',  linewidth=0.5, linestyle='-',  label='I1')
+plt.plot(np.mean(U[I2_idx, :], axis=0), color='tab:red',  linewidth=0.5, linestyle='--', label='I2')
+plt.plot(np.mean(U[I3_idx, :], axis=0), color='tab:red',  linewidth=0.5, linestyle=':', label='I3')
+
+
+#### Analysis ####
+
+##
+##
+##
+
+plt.show()
+plt.imshow(S>0)
+
+#IPython.embed()
