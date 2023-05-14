@@ -16,24 +16,24 @@ def setup():
         'rec_start'  :   200.,                                                      # start point for data recording
         'rec_stop'   :   1000.,                                                      # end points for data recording
         'sim_time'   :   1000.,                                                      # Time the network is simulated in ms
-        'calc_lfp'   :  False,                                                      # Flag to use LFP approximation procedure
+        'calc_lfp'   :   False,                                                      # Flag to use LFP approximation procedure
         'verbose'    :  True,                                                       # Flag for verbose function output
         'K_scale'    :     1.,                                                      # Scaling factor for connections
         'syn_scale'  :     1.,                                                      # Scaling factor for synaptic strenghts
         'N_scale'    :     1.,                                                      # Scaling factor for the number of neurons
         'R_scale'    :     0.1,                                                     # Fraction of neurons to be recorded from
         'opt_run'    :   False,                                                     # Flag for optimizer run, run minimal settings
-        'g'          :      4.,                                                     # Excitation-Inhibition balance
+        'g'          :      -4.,                                                     # Excitation-Inhibition balance
         'resolution' :   2**-3,                                                     # Resolution of the simulaton
         'transient'  :     200,                                                     # Ignore the first x ms of the simulation
         'th_in'      :     0.,#902,                                                 # Thalamic input, nodes x frequency
         'num_neurons': np.array([20683, 5834, 21915, 5479, 4850, 1065, 14365, 2948]),
         'label'      : ['E', 'I', 'E', 'I', 'E', 'I', 'E', 'I'],
         'cell_params'  : {
-                        'V_m'     : -58,
-                        'V_th'    : -50,
-                        'V_reset' : -65,
-                        'C_m'     : 250,
+                        'V_m'     : -58.,
+                        'V_th'    : -50.,
+                        'V_reset' : -65.,
+                        'C_m'     : 250.,
                         't_ref'   : 2. ,
                         'tau_syn_ex' : 0.5,
                         'tau_syn_in' : 0.5,
@@ -51,44 +51,17 @@ def setup():
     ################################################################
     
     # Connectivity matrix                
-    params['connectivity'] = np.array(
+    params['connectivity'] = np.transpose(np.array(
             [[0.1009, 0.1689, 0.0437, 0.0818, 0.0323, 0.    , 0.0076, 0.    ],
              [0.1346, 0.1371, 0.0316, 0.0515, 0.0755, 0.    , 0.0042, 0.    ],
-             [0.0077, 0.0059, 0.0497, 0.135 , 0.0067, 0.0003, 0.0453, 0.    ],
+             [0.0077, 0.0059, 0.0497, 0.135  , 0.0067, 0.0003, 0.0453, 0.    ],
              [0.0691, 0.0029, 0.0794, 0.1597, 0.0033, 0.    , 0.1057, 0.    ],
              [0.1004, 0.0622, 0.0505, 0.0057, 0.0831, 0.3726, 0.0204, 0.    ],
              [0.0548, 0.0269, 0.0257, 0.0022, 0.06  , 0.3158, 0.0086, 0.    ],
              [0.0156, 0.0066, 0.0211, 0.0166, 0.0572, 0.0197, 0.0396, 0.2252],
-             [0.0364, 0.001 , 0.0034, 0.0005, 0.0277, 0.008 , 0.0658, 0.1443]]
-            )
+             [0.0364, 0.001  , 0.0034, 0.0005, 0.0277, 0.008 , 0.0658, 0.1443]]
+            ))
     
-    ################################
-    ## Specify synapse properties ##
-    ################################
-    
-    params['syn_type'] = np.array([["E", "E", "E", "E", "E", "E", "E", "E"],
-                                   ["I", "I", "I", "I", "I", "I", "I", "I"],
-                                   ["E", "E", "E", "E", "E", "E", "E", "E"],
-                                   ["I", "I", "I", "I", "I", "I", "I", "I"],
-                                   ["E", "E", "E", "E", "E", "E", "E", "E"],
-                                   ["I", "I", "I", "I", "I", "I", "I", "I"],
-                                   ["E", "E", "E", "E", "E", "E", "E", "E"],
-                                   ["I", "I", "I", "I", "I", "I", "I", "I"]
-                                    ])
-    
-    ## Synaptic strength
-    params['syn_strength'] = np.array([[87.8]*8]*8)
-    
-    
-    #######################################
-    ## Background stimulation parameters ##
-    #######################################
-
-    params['ext_rate'] = 8.0
-    params['ext_nodes']   = np.array([1600, 1500, 
-                                      2100, 1900, 
-                                      2000, 1900, 
-                                      2900, 2100])
     
     def get_weight(PSP_val, net_dict):
         """ Computes weight to elicit a change in the membrane potential.
@@ -118,8 +91,52 @@ def setup():
         PSC_e = (PSC_e_over_PSP_e * PSP_val)
         return PSC_e
     
+    ################################
+    ## Specify synapse properties ##
+    ################################
+    
+    params['syn_type'] = np.array([["E", "E", "E", "E", "E", "E", "E", "E"],
+                                   ["I", "I", "I", "I", "I", "I", "I", "I"],
+                                   ["E", "E", "E", "E", "E", "E", "E", "E"],
+                                   ["I", "I", "I", "I", "I", "I", "I", "I"],
+                                   ["E", "E", "E", "E", "E", "E", "E", "E"],
+                                   ["I", "I", "I", "I", "I", "I", "I", "I"],
+                                   ["E", "E", "E", "E", "E", "E", "E", "E"],
+                                   ["I", "I", "I", "I", "I", "I", "I", "I"]
+                                    ])
+    
+    ## Synaptic strength
+    params['syn_strength'] = np.array([
+                                    [0.15]*8,
+                                    [0.15*params['g']]*8,
+                                    [0.15]*8,
+                                    [0.15*params['g']]*8,
+                                    [0.15]*8,
+                                    [0.15*params['g']]*8,
+                                    [0.15]*8,
+                                    [0.15*params['g']]*8]
+                                    )
+    params['syn_strength'][2,0] = 0.15 * 2
+    
+    params['syn_strength'] = get_weight(params['syn_strength'], params)
+    
+    
+    #######################################
+    ## Background stimulation parameters ##
+    #######################################
+
+    params['ext_rate'] = 8.0
+    params['ext_nodes']   = np.array(
+        [1600, 1500, 
+         2100, 1900, 
+         2000, 1900, 
+         2900, 2100])
+    
+    
+    
     weight = get_weight(0.15, params)
     
+    params['exc_weight'] = weight
     params['ext_weights'] = [weight]*8
     
     if params['calc_lfp']:
@@ -189,11 +206,11 @@ def prep_LFP_approximation(params):
     )
     
     # population names, morphologies, sizes and connection probability:
-    params['morphologies'] = ['BallAndSticks_I.hoc', 
-                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
-                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
-                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc',
-                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc', 'BallAndSticks_I.hoc'
+    params['morphologies'] = [
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc',
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc',
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc',
+                    'BallAndSticks_E.hoc', 'BallAndSticks_I.hoc'
                     ]
     ## TODO: Remove
     # if TESTING:
@@ -220,23 +237,14 @@ def prep_LFP_approximation(params):
     I2E = dict(tau1=0.1, tau2=9.0, e=-80.)
     I2I = dict(tau1=0.1, tau2=9.0, e=-80.)
     
-    params['synapseParameters'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
+    params['synapseParameters'] = [[E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I]]
     # synapse max. conductance (function, mean, st.dev., min.):
     params['weightFunction'] = np.random.normal
     # weight_<post><pre> values set by parameters file via main simulation scripts
@@ -255,23 +263,14 @@ def prep_LFP_approximation(params):
     I2E = dict(a=(0.3 - 1.4) / 0.5, b=np.inf, loc=1.3, scale=0.5)
     I2I = dict(a=(0.3 - 1.2) / 0.6, b=np.inf, loc=1.2, scale=0.6)
     
-    params['delayArguments'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
+    params['delayArguments'] = [[E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I]]
     # will be deprecated; has no effect with delayFunction = st.truncnorm:
     params['mindelay'] = None
     
@@ -300,23 +299,14 @@ def prep_LFP_approximation(params):
               scale=1.1)
     
 
-    params['multapseArguments'] = [[I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I, E2E, E2I, E2I, E2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I],
-                                    [I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I, I2E, I2I, I2I, I2I]]
+    params['multapseArguments'] = [[E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I],
+                                    [E2E, E2I, E2E, E2I, E2E, E2I, E2E, I2I]]
     
     
     # method NetworkCell.get_rand_idx_area_and_distribution_norm
@@ -329,7 +319,7 @@ def prep_LFP_approximation(params):
     ## Layer 5  : 170.
     ## Layer 6  : 160.
     
-    syn_pos = [[]]*17
+    syn_pos = [[]]*8
     ## Create synapse positional parameters
     for i in range(len(params['label'])):
         for j in range(len(params['label'])):

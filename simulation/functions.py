@@ -142,13 +142,13 @@ class Network:
                 w_max = 0.0
                 
             weight = nest.math.redraw(nest.random.normal(
-                mean = -self.g * syn_specs[x,y] if synapse_type[x,y] != "E" else syn_specs[x,y],
+                mean = syn_specs[x,y],
                 std=max(abs(syn_specs[x,y]*0.1), 1e-10)),
                 min=w_min,
                 max=w_max)
             delay = nest.math.redraw(nest.random.normal(
-                mean = 1.5 if synapse_type[x,y] == "E" else 0.8,
-                std=abs(1.5*0.5) if synapse_type[x,y] == "E" else abs(0.8*0.5)),
+                mean = 1.5 if synapse_type[x,y] == "E" else 0.75,
+                std=abs(1.5*0.5) if synapse_type[x,y] == "E" else abs(0.75*0.5)),
                 min=self.resolution, 
                 max=np.Inf)
 
@@ -160,7 +160,7 @@ class Network:
         
                 
 
-    def add_stimulation(self, source, target, weight):
+    def add_stimulation(self, source, target, c_specs, s_specs):
         """
         Adds excitatory stimulation of the specified type to the specified target
         population
@@ -181,9 +181,10 @@ class Network:
         """
         stimulus = nest.Create(source['type'])
         stimulus.rate = source['rate']
-        nest.Connect(stimulus, self.populations[target], conn_spec={'rule': 'all_to_all'},  syn_spec={#'receptor_type': 1,
-                                                                                                'weight': weight,
-                                                                                                'delay' : 1.5})
+        
+        nest.Connect(stimulus, self.populations[target],
+                     conn_spec = c_specs,
+                     syn_spec = s_specs)
         
     def add_dc_stimulation(self, source, target):
         stimulus = nest.Create(source['type'])

@@ -74,19 +74,29 @@ def run_network():
         print(f"Time required to populate network: {time.time() - st}")
         print("Adding stimulation...")
     for i in range(len(ext_rates)):
-        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, target=params['layer_type'][i], weight=params['ext_weights'][i])
+        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, 
+                                target=params['layer_type'][i], 
+                                c_specs={'rule': 'all_to_all'},
+                                s_specs={'weight': params['ext_weights'][i],
+                                         'delay': 1.5})
     
     ## Add DC stimulation
-    th_input = params['th_in']
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", weight=1.0)
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Pvalb", weight=1.0)
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Sst", weight=1.0)
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_Htr3a", weight=1.0)
+    th_input = params['th_in'] * 902
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
+                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0983 * params['num_neurons'][2])},
+                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
+                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0619 * params['num_neurons'][3])},
+                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
+
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
+                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0512 * params['num_neurons'][6])},
+                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
+                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0196 * params['num_neurons'][7])},
+                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
+
     
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_E", weight=1.0)
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Pvalb", weight=1.0)
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Sst", weight=1.0)
-    # network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L6_Htr3a", weight=1.0)
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
@@ -186,7 +196,7 @@ def run_network():
             colors = ["b" if l == "E" else "r" for l in label]
             
             ## Plot spike data
-            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(th_input)):0>4}")
+            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(params['th_in'])):0>4}")
             plt.show()
             
             ## Display the average firing rate in Hz
