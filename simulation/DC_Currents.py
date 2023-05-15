@@ -24,7 +24,7 @@ n_workers = 16
 
 fr_list = []
 
-for th in range(0,151,5):
+for th in range(0,61,2):
     params['th_in'] =  round(th,2)
     
     print(f"Starting run with thalamic input of {th}")

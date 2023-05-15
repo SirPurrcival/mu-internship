@@ -11,6 +11,7 @@ from mpi4py import MPI
 import numpy as np
 import matplotlib.pyplot as plt
 import nest
+import scipy as sp
 from functions import Network, plot_LFPs, raster, rate, approximate_lfp_timecourse, get_irregularity, get_synchrony, get_firing_rate, join_results, prep_spikes
 #import icsd
 import time
@@ -23,7 +24,13 @@ def run_network():
     with open("params", 'rb') as f:
        params = pickle.load( f)
     
-    if params['verbose']:
+    ## Start parallelization here?
+    ## Get the rank of the MPI process
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    
+    
+    if params['verbose'] and rank == 0:
         print("Begin setup")
         ## get the start time
         st = time.time()
@@ -55,58 +62,62 @@ def run_network():
     ## Create the network ##
     ########################
     
-    ## Start parallelization here?
-    ## Get the rank of the MPI process
-    comm = MPI.COMM_WORLD
-    rank = comm.Get_rank()
+
     
     network = Network(params) #params['resolution'], params['rec_start'], params['rec_stop'], params['g'])
     
     # Populations
-    if params['verbose']:
+    if params['verbose'] and rank == 0:
         print(f"Time required for setup: {time.time() - st}")
         print("Populating network...")
     for i in range(len(params['layer_type'])):
-        network.addpop('iaf_psc_exp', params['layer_type'][i] , int(num_neurons[i]), params['cell_params'], label=params['label'][i], nrec=int(params['R_scale']* num_neurons[i]))
+        network.addpop('iaf_psc_exp', params['layer_type'][i] , int(num_neurons[i]), params['cell_params'], label=params['label'][i], record_from_pop=True, nrec=int(params['R_scale']* num_neurons[i]))
     
     # # add stimulation
-    if params['verbose']:
+    if params['verbose'] and rank == 0:
         print(f"Time required to populate network: {time.time() - st}")
         print("Adding stimulation...")
     for i in range(len(ext_rates)):
-        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i]}, 
+        network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i], 'start': 0, 'stop': params['sim_time']}, 
                                 target=params['layer_type'][i], 
                                 c_specs={'rule': 'all_to_all'},
                                 s_specs={'weight': params['ext_weights'][i],
                                          'delay': 1.5})
-    
-    ## Add DC stimulation
-    th_input = params['th_in'] * 902
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
-                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0983 * params['num_neurons'][2])},
-                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
-                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0619 * params['num_neurons'][3])},
-                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
 
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
-                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0512 * params['num_neurons'][6])},
-                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
-    network.add_stimulation(source={'type': 'poisson_generator', 'rate': th_input}, target="L4_E", 
-                            c_specs={'rule': 'fixed_indegree', 'indegree': int(0.0196 * params['num_neurons'][7])},
-                            s_specs={'weight': params['exc_weight'], 'delay': 1.5})
 
     
     
     ## Connect all populations to each other according to the
     ## connectivity matrix and synaptic specifications
-    if params['verbose']:
+    if params['verbose'] and rank == 0:
         print(f"Time required for stimulation setup: {time.time() - st}")
         print("Connecting network...")
     
     network.connect_all(params['layer_type'], connections, params['syn_type'], synaptic_strength)
     
-    if params['verbose']:
+    ## Add thalamic input
+    network.addpop('parrot_neuron', 'thalamic_input', 902)
+    network.add_stimulation(source={'type': 'poisson_generator', 'rate': params['th_in'], 'start': params['th_start'], 'stop': params['th_stop']}, 
+                            target='thalamic_input', 
+                            c_specs={'rule': 'all_to_all'},
+                            s_specs={'weight': params['ext_weights'][0],
+                                     'delay': 1.5})
+    pops = network.get_pops()
+    network.connect(network.thalamic_population['thalamic_input'], pops['L4_E'], 
+                    conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0983 * len(network.get_pops()['L4_E']))}, 
+                    syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
+    network.connect(network.thalamic_population['thalamic_input'], pops['L4_I'], 
+                    conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0619 * len(network.get_pops()['L4_I']))}, 
+                    syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
+    network.connect(network.thalamic_population['thalamic_input'], pops['L6_E'], 
+                    conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0512 * len(network.get_pops()['L6_E']))}, 
+                    syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
+    network.connect(network.thalamic_population['thalamic_input'], pops['L6_I'], 
+                    conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0196 * len(network.get_pops()['L6_I']))}, 
+                    syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
+    
+    
+    if params['verbose'] and rank == 0:
         print(f"Time required for connection setup: {time.time() - st}")
         
     ## Prepare LFP kernels if we care about LFPs this run
@@ -115,7 +126,7 @@ def run_network():
         H_YX = prep_LFP_kernel(params)
         network.create_fir_filters(H_YX, params)
         print(f"Time required for LFP setup {time.time() - st}")
-    if params['verbose']:
+    if params['verbose'] and rank == 0:
         print("Done! Starting simulation...")
     
     ## simulation loop
@@ -123,36 +134,25 @@ def run_network():
     simulating = True
     simulation_time = 0
     while simulating: 
-        ## End the simulation if the given time has been reached or the
-        ## simulation takes too much time (excessive spiking)
-        if time.time() - time_step > 200 and simulation_time > 50:
-            simulating = False
-            # if params['verbose']:    
-            #     print("Extreme spiking, aborting run...")
-            if params['verbose']:
-                print(f"Simulation interrupted at {simulation_time} because it took {time.time() - time_step} seconds.")
-            with open("sim_results", 'wb') as f:
-                data = ([10000]*17, [10000]*17, [10000]*17)
-                pickle.dump(data, f)
-            #return data
         ## Exit normally
-        elif simulation_time >= params['sim_time']:
+        if simulation_time >= params['sim_time']:
             print("Simulation done!")
             simulating = False
         ## Simulate one step of 10ms
         else:
             time_step = time.time()
-            network.simulate(10)
-            simulation_time += 10
-            print(f"Rank {rank} simulating for {simulation_time}.\nTime taken for simulating 10ms: {time.time() - time_step}s")
+            network.simulate(50)
+            simulation_time += 50
+            if rank == 0:
+                print(f"Simulating for {simulation_time}.\nTime taken for simulating 10ms: {time.time() - time_step}s")
     
-    if params['verbose']:
+    if params['verbose'] and rank == 0:
         print(f"Time required for simulation: {time.time() - st}")
         print("Done! Fetching data...")
     
     ## Extract data from the network
-    spikes = network.get_data()
-    if params['verbose']:
+    mmdata, spikes = network.get_data()
+    if params['verbose'] and rank == 0:
         print(f"Time required for fetching data: {time.time() - st}")
     
     ## end parallelization here?
@@ -160,10 +160,13 @@ def run_network():
 
     with open(f"tmp/spikes_{rank}", 'wb') as f:
         pickle.dump(spikes, f)
-    if params['verbose']:
+    with open(f"tmp/mmdata_{rank}", 'wb') as f:
+        pickle.dump(mmdata, f)
+        
+    if params['verbose'] and rank == 0:
         print(f"rank {rank} finished!")
     
-    if params['verbose']:
+    if params['verbose'] and rank == 0:
         print("Done, gathering results and preparing data...")
     
     comm.barrier()
@@ -177,15 +180,50 @@ def run_network():
         for i in range(len(spike_file_names)):
             with open(f"tmp/spikes_{i}", 'rb') as f:
                 spikes_gathered.append(pickle.load(f))
+                
+        ## read in results
+        mm_file_names = [f for f in os.listdir("tmp") if f.startswith("mmdata_")]
+        
+        mm_gathered = []
+        for i in range(len(mm_file_names)):
+            with open(f"tmp/mmdata_{i}", 'rb') as f:
+                mm_gathered.append(pickle.load(f))
         
         ## join the results
         spikes = join_results(spikes_gathered)
+        v_membrane = join_results(mm_gathered)
         
         ## Prepare data for graphing
         spikes = prep_spikes(spikes, network)
         
-        if params['verbose']:
+        
+        vm_data = []
+        for i in v_membrane:
+            ## For each population
+            times = np.array(i['times'])
+            senders = i['senders']
+            v = np.array(i['V_m'])
+            
+            # Bin the membrane potentials based on time steps
+            bin_edges = np.arange(times.min(), times.max() + 0.126, 0.125)
+            bin_counts, _ = np.histogram(times, bins=bin_edges)
+            bin_means, _ = np.histogram(times, bins=bin_edges, weights=v)
+            bin_means[bin_counts == 0] = np.nan  # Set empty bins to NaN to avoid division by zero
+            
+            # Compute the mean for each bin
+            mean_v = bin_means / bin_counts
+
+            vm_data.append(mean_v)
+            # # for j in np.unique(times):
+            # #     np.where(v == j)
+        vm_data = np.array(vm_data)
+        
+        
+            
+
+        if params['verbose'] and rank == 0:
             print(f"Done. Time required for simulation and gathering: {time.time() - st}")
+            print(np.shape(vm_data))
         
         if not params['opt_run']:
             
@@ -193,28 +231,46 @@ def run_network():
             ## Define colors used in the raster plot per neuron population based on label
             label = network.get_labels()
             ##colors = ["b" if l == "E" else "r" if l == "Pv" else "green" if l == "Sst" else "purple" for l in label]
-            colors = ["b" if l == "E" else "r" for l in label]
+            colors = ["tab:blue" if l == "E" else "crimson" for l in label]
             
             ## Plot spike data
-            raster(spikes, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(params['th_in'])):0>4}")
+            raster(spikes, vm_data, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), label, suffix=f"{str(int(params['th_in'])):0>4}")
             plt.show()
-            
             ## Display the average firing rate in Hz
             rate(spikes, params['rec_start'], params['rec_stop'])
             
-            if params['verbose']:
+            if params['verbose'] and rank == 0:
                 print(f"Time required for graphing grid: {time.time() - st}")
                 
+            # ## Scipy spectrogram
+            # def create_spectrogram(data, fs):
+                
+            #     _, _,  _, spectrogram = plt.specgram(data, Fs=fs)
+            #     plt.colorbar(label='Power Spectral Density (dB/Hz)')
+            #     plt.xlabel('Time (s)')
+            #     plt.ylabel('Frequency (Hz)')
+            #     plt.savefig("simresults/spectrogram.png")
+                
+            #     return spectrogram
             
+            # # Example usage
+            # data = vm_data
+            # fs = nest.resolution
+            
+            # spectrogram = create_spectrogram(data, fs)
+
+            # a, b, c = sp.signal.spectrogram(vm_data, fs=nest.resolution)
+            
+            # plt.plot(c)
+            # plt.savefig("simresults/spectrogram.png")            
             #################################
             ## LFP Approximation procedure ##
             #################################
             if params['calc_lfp']:
                 
-                if params['verbose']:
+                if params['verbose'] and rank == 0:
                     print("Done! Estimating LFPs per layer...")
                 
-                print(network.multimeters)
                 
                 plot_LFPs(network, params, H_YX, num_neurons)                
                 
