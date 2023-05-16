@@ -20,13 +20,13 @@ def setup():
         'verbose'    :  True,                                                        # Flag for verbose function output
         'K_scale'    :     1.,                                                       # Scaling factor for connections
         'syn_scale'  :     1.,                                                       # Scaling factor for synaptic strenghts
-        'N_scale'    :     1.0,                                                      # Scaling factor for the number of neurons
+        'N_scale'    :     0.1,                                                      # Scaling factor for the number of neurons
         'R_scale'    :     0.1,                                                      # Fraction of neurons to be recorded from
         'opt_run'    :   False,                                                      # Flag for optimizer run, run minimal settings
         'g'          :      -4.,                                                     # Excitation-Inhibition balance
-        'resolution' :   2**-3,                                                      # Resolution of the simulaton
+        'resolution' :     0.1,                                                      # Resolution of the simulaton
         'transient'  :     200,                                                      # Ignore the first x ms of the simulation
-        'th_in'      :      0.,#902,                                                 # Thalamic input, nodes x frequency
+        'th_in'      :      20.,#902,                                                 # Thalamic input, nodes x frequency
         'th_start'   :    400.,
         'th_stop'    :    600.,
         'num_neurons': np.array([20683, 5834, 21915, 5479, 4850, 1065, 14365, 2948]),

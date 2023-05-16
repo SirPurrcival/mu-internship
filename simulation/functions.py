@@ -513,7 +513,7 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, label, suffix="",
     print("Hist done")
     
     vm_data = np.array(vm_data).T
-    x_values = np.arange(rec_start + 0.125, rec_stop, 0.125)
+    x_values = np.arange(rec_start + 0.1, rec_stop, 0.1)
     ax3 = ax3.plot(x_values, vm_data)
     
     print("Averaged membrane potential done")

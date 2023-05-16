@@ -205,7 +205,7 @@ def run_network():
             v = np.array(i['V_m'])
             
             # Bin the membrane potentials based on time steps
-            bin_edges = np.arange(times.min(), times.max() + 0.126, 0.125)
+            bin_edges = np.arange(times.min(), times.max() + 0.126, 0.1)
             bin_counts, _ = np.histogram(times, bins=bin_edges)
             bin_means, _ = np.histogram(times, bins=bin_edges, weights=v)
             bin_means[bin_counts == 0] = np.nan  # Set empty bins to NaN to avoid division by zero
@@ -243,21 +243,34 @@ def run_network():
                 print(f"Time required for graphing grid: {time.time() - st}")
                 
             # ## Scipy spectrogram
-            # def create_spectrogram(data, fs):
-                
-            #     _, _,  _, spectrogram = plt.specgram(data, Fs=fs)
-            #     plt.colorbar(label='Power Spectral Density (dB/Hz)')
-            #     plt.xlabel('Time (s)')
-            #     plt.ylabel('Frequency (Hz)')
-            #     plt.savefig("simresults/spectrogram.png")
-                
-            #     return spectrogram
+            def create_spectrogram(data, fs, t_start, t_end, f_min, f_max):
+                num_timesteps = data.shape[0]
+                t = np.linspace(t_start, t_end, num_timesteps)
+                _, _, _, im = plt.specgram(data, Fs=fs, NFFT=4096, noverlap=4096//2, xextent=[t_start, t_end])
+                plt.colorbar(label='Power Spectral Density (dB/Hz)')
+                plt.xlabel('Time (s)')
+                plt.ylabel('Frequency (Hz)')
+                plt.ylim(f_min, f_max)  # Set x-axis limits to reflect the desired time range
+                plt.savefig("simresults/spectrogram.png")
+                plt.show()
             
-            # # Example usage
-            # data = vm_data
-            # fs = nest.resolution
+                return im.get_array()
             
-            # spectrogram = create_spectrogram(data, fs)
+            # Example usage
+            resolution_ms = params['resolution']  # Assuming resolution is in milliseconds
+            t_start = params['rec_start']  # Start time in seconds
+            t_end = params['rec_stop']  # End time in seconds
+            f_min = 0  # Minimum frequency in Hz
+            f_max = 150  # Maximum frequency in Hz
+            
+            fs = 1000 / resolution_ms  # Calculate the sampling rate in Hz
+            num_timesteps = int((t_end - t_start) * (1000 / resolution_ms))
+            vm_data = np.random.randn(8, num_timesteps)  # Example data
+            
+            data = np.mean(vm_data, axis=0)
+            
+            spectrogram = create_spectrogram(data, fs, t_start, t_end, f_min, f_max)
+
 
             # a, b, c = sp.signal.spectrogram(vm_data, fs=nest.resolution)
             
