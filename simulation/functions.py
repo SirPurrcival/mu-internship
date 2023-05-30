@@ -11,7 +11,6 @@ class Network:
     def __init__(self, p):
         self.populations = {}
         self.thalamic_population = {}
-        self.labels = []
         self.nrec = []
         self.rec_start = p['rec_start']
         self.rec_stop = p['rec_stop']
@@ -38,7 +37,7 @@ class Network:
                             'record_from': ["V_m"]
                             })
 
-    def addpop(self, neuron_type, pop_name ,num_neurons, neuron_params=None, label=None, 
+    def addpop(self, neuron_type, pop_name ,num_neurons, neuron_params=None, 
                record=False, nrec=0.):
         """
         Adds a population to the network with given parameters
@@ -246,18 +245,6 @@ class Network:
         """
         nest.Simulate(t_sim)
     
-    def get_labels(self):
-        """
-        Returns the labels for the populations in the network
-
-        Returns
-        -------
-        list
-            A list containing the labels indicating either excitatory or inhibitory populations.
-
-        """
-        return self.labels
-    
     def get_nrec(self):
         """
         Returns the number of neurons recorded from each population in the order they were created.
@@ -291,73 +278,6 @@ class Network:
         
         
         return mm_dict, sr_dict
-    
-    def create_fir_filters(self, H_YX, params):
-        """Create sets of FIR filters for each signal probe
-        Code taken from https://github.com/LFPy/LFPykernels based on the work of Hagen et al. (2022)
-        https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1010353
-        
-        Parameters
-        ----------
-        kernels: nested dict
-        """
-        num_neurons = [int(x) for x in params['num_neurons']*params['N_scale']]
-        keys = list(H_YX[f"{params['layer_type'][0]}:{params['layer_type'][0]}"].keys())
-        n_kernels = len(keys)
-        n_filters_per_kernel = [] 
-        for key in keys:
-            n_filters_per_kernel += [H_YX[f"{params['layer_type'][0]}:{params['layer_type'][0]}"][key].shape[0]]
-            
-        # create container
-        if not hasattr(self, 'fir_filters'):
-            self.fir_filters = dict()
-            
-        # create sets of FIR_filter nodes for each type of measurement and 
-        # presynaptic population (ignoring Poisson generators)
-        for k in keys:
-            self.fir_filters[k] = dict()
-            # presynaptic
-            for i, X in enumerate(params['layer_type']):
-                # self.fir_filters[k][X] = []
-                # postsynaptic
-                for j, Y in enumerate(params['layer_type']):
-                    H = H_YX[f'{Y}:{X}'][k]
-                    
-                    # create one fir_filter node for each row
-                    fir_filter_params = []
-                    for h in H:
-                        fir_filter_params += [dict(
-                            N=h.size,  # filter order
-                            h=h,  # filter coefficients
-                        )]
-                    self.fir_filters[k][f'{Y}:{X}'] = nest.Create('fir_filter_nestml', 
-                                                                  H.shape[0], 
-                                                                  fir_filter_params)
-                    
-        # create recording multimeters, one per probe, sample every dt
-        self.multimeters = dict()
-        for k in keys:
-            self.multimeters[k] = dict()
-            for X in params['layer_type']:
-                for Y in params['layer_type']:
-                    self.multimeters[k][f'{Y}:{X}'] = nest.Create('multimeter', 1, 
-                                                                  {'interval': params['resolution'], 'label': f'{k}_{Y}:{X}'})
-                    self.multimeters[k][f'{Y}:{X}'].set({"record_from": ["y"]})
-        
-        # connect FIR filter nodes to the corresponding presynaptic populations at minimum delay
-        for k in keys:
-            for i, X in enumerate(params['layer_type']):
-                for Y in params['layer_type']:
-                    nest.Connect(self.populations[f'{X}'], 
-                                 self.fir_filters[k][f'{Y}:{X}'], 
-                                 syn_spec=dict(delay=params['resolution']))
-        
-        # connect multimeters
-        for k in keys:
-            for i, X in enumerate(params['layer_type']):
-                for Y in params['layer_type']:
-                    nest.Connect(self.multimeters[k][f'{Y}:{X}'], 
-                                 self.fir_filters[k][f'{Y}:{X}'])
     
 def prep_spikes(spikes):
     

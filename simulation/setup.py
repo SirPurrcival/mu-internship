@@ -21,26 +21,25 @@ def setup():
         'g'          :     -4.,                                                # Excitation-Inhibition balance
         'resolution' :     0.1,                                                # Resolution of the simulaton
         'transient'  :     200,                                                # Ignore the first x ms of the simulation
-        'th_in'      :     20.,                                                # Thalamic input, nodes x frequency
+        'th_in'      :    120.,                                                # Thalamic input in Hz
         'th_start'   :    400.,
-        'th_stop'    :    600.,
+        'th_stop'    :    410.,
         'num_neurons': np.array([20683, 5834, 21915, 5479, 4850, 1065, 14365, 2948]),
-        'label'      : ['E', 'I', 'E', 'I', 'E', 'I', 'E', 'I'],
         'cell_params'  : {
-                        'V_m'     : -58.,
-                        'V_th'    : -50.,
-                        'V_reset' : -65.,
-                        'C_m'     : 250.,
-                        't_ref'   : 2. ,
-                        'tau_syn_ex' : 0.5,
-                        'tau_syn_in' : 0.5,
-                        'E_L':       -65.0,
-                        'tau_m' :     10.0,},
-        'layer_type' : [                                                             # Layer and cell types
-                        'L23_E', 'L23_I',
-                        'L4_E', 'L4_I',  
-                        'L5_E', 'L5_I', 
-                        'L6_E', 'L6_I']
+                        'V_m'        :  -58.,
+                        'V_th'       :  -50.,
+                        'V_reset'    :  -65.,
+                        'C_m'        :  250.,
+                        't_ref'      :    2.,
+                        'tau_syn_ex' :   0.5,
+                        'tau_syn_in' :   0.5,
+                        'E_L'        : -65.0,
+                        'tau_m'      :  10.0,
+                        },
+        'layer_type' : ['L23_E', 'L23_I',
+                        'L4_E' , 'L4_I' ,  
+                        'L5_E' , 'L5_I' , 
+                        'L6_E' , 'L6_I' ]
         }
     
     ################################################################

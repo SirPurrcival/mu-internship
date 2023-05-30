@@ -27,7 +27,7 @@ if params['verbose'] and rank == 0:
 ########################
 nest.ResetKernel()
 nest.local_num_threads = 32 ## adapt if necessary
-nest.print_time = True if params['verbose'] == True else False
+##nest.print_time = True if params['verbose'] == True else False
 nest.resolution = params['resolution']
 nest.set_verbosity("M_WARNING")
 nest.overwrite_files = True
@@ -57,7 +57,7 @@ if params['verbose'] and rank == 0:
     print(f"Time required for setup: {time.time() - st}\nPreparing network...")
 
 for i in range(len(params['layer_type'])):
-    network.addpop('iaf_psc_exp', params['layer_type'][i] , int(num_neurons[i]), params['cell_params'], label=params['label'][i], record=True, nrec=int(params['R_scale']* num_neurons[i]))
+    network.addpop('iaf_psc_exp', params['layer_type'][i] , int(num_neurons[i]), params['cell_params'], record=True, nrec=int(params['R_scale']* num_neurons[i]))
 
 ###############################################################################
 ## Add background stimulation
