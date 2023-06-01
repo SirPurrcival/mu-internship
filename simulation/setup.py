@@ -1,6 +1,14 @@
 import numpy as np
 import pickle
 
+## Make E/I ratio
+## Make total connections value (percentage)
+
+## Figure out gamma range
+## Figure out beta range
+
+## spectral density plot
+
 def setup():
     #######################################
     ## Set parameters for the simulation ##
@@ -9,9 +17,9 @@ def setup():
     ## Recording and simulation parameters
     params = {
         'rec_start'  :   1000.,                                                # start point for data recording
-        'rec_stop'   :   3000.,                                                # end points for data recording
+        'rec_stop'   :   4000.,                                                # end points for data recording
         'record_to'  :'memory',
-        'sim_time'   :   3000.,                                                # Time the network is simulated in ms
+        'sim_time'   :   4000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -40,7 +48,7 @@ def setup():
                          {
                              'V_m'        :  -70.,
                              'V_th'       :  -49.,
-                             'V_reset'    :  -80.,
+                             'V_reset'    :  -76.,
                              'C_m'        :  250.,
                              't_ref'      :    4.,
                              'tau_syn_ex' :     1,
@@ -54,10 +62,10 @@ def setup():
                             'V_reset'    :  -70.,
                             'C_m'        :  250.,
                             't_ref'      :    3.,
-                            'tau_syn_ex' :     2,
-                            'tau_syn_in' :     1,
+                            'tau_syn_ex' :     1,
+                            'tau_syn_in' :     2,
                             'E_L'        : -65.0,
-                            'tau_m'      :  20.0,
+                            'tau_m'      :  30.0,
                         },
                         {
                             'V_m'        :  -70.,
@@ -65,10 +73,10 @@ def setup():
                             'V_reset'    :  -70.,
                             'C_m'        :  250.,
                             't_ref'      :    4.,
-                            'tau_syn_ex' :     2,
-                            'tau_syn_in' :     1,
+                            'tau_syn_ex' :    1.,
+                            'tau_syn_in' :    1.,
                             'E_L'        : -65.0,
-                            'tau_m'      :  20.0,
+                            'tau_m'      :  25.0,
                         }],
         'pop_name'   : ['L1_E', 'L1_I',
                         'L2_E' , 'L2_I']
