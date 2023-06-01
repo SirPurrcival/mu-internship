@@ -1,4 +1,3 @@
-## Import libraries
 from matplotlib import pyplot as plt
 import numpy as np
 import nest
@@ -17,12 +16,13 @@ class Network:
         self.resolution = p['resolution']
         self.opt = p['opt_run']
         self.g = p['g']
+        self.record_to = p['record_to']
         
         #######################################################################
         ## Create recording devices
         ## Spike recorder
         self.sr = nest.Create("spike_recorder",
-                    params = {'record_to': 'ascii',
+                    params = {'record_to': self.record_to,
                               'start'    : self.rec_start,
                               'stop'     : self.rec_stop,
                               'label'    : "spike_recorder"
@@ -30,7 +30,7 @@ class Network:
         ## Multimeter
         self.mm = nest.Create("multimeter",
                     params={'interval'   : self.resolution,
-                            'record_to'  : 'ascii',
+                            'record_to'  : self.record_to,
                             'start'      : self.rec_start,
                             'stop'       : self.rec_stop,
                             'label'      : 'multimeter',
@@ -263,40 +263,82 @@ class Network:
         and returns it in organized form.
 
         """
-        mm_files = self.mm.filenames
-        sr_files = self.sr.filenames
-        
-        sr_data = np.hstack([np.loadtxt(f, skiprows=3).T for f in sr_files])
-        mm_data = np.hstack([np.loadtxt(f, skiprows=3).T for f in mm_files])
-        
-        sr_header = np.loadtxt(sr_files[0], dtype=str, skiprows=2, max_rows=1)
-        mm_header = np.loadtxt(mm_files[0], dtype=str, skiprows=2, max_rows=1)
-        
-        sr_dict = {sr_header[i]:sr_data[i] for i in range(len(sr_header))}
-        mm_dict = {mm_header[i]:mm_data[i] for i in range(len(mm_header))}
-        
+        #######################################################################
+        ## Fetch from files. 
+        if self.record_to == 'ascii':
+            mm_files = self.mm.filenames
+            sr_files = self.sr.filenames
+            
+            sr_data = np.hstack([np.loadtxt(f, skiprows=3).T for f in sr_files])
+            mm_data = np.hstack([np.loadtxt(f, skiprows=3).T for f in mm_files])
+            
+            sr_header = np.loadtxt(sr_files[0], dtype=str, skiprows=2, max_rows=1)
+            mm_header = np.loadtxt(mm_files[0], dtype=str, skiprows=2, max_rows=1)
+            
+            sr_dict = {sr_header[i]:sr_data[i] for i in range(len(sr_header))}
+            mm_dict = {mm_header[i]:mm_data[i] for i in range(len(mm_header))}
+        #######################################################################
+        ## Fetch from memory. Best used for small networks
+        elif self.record_to == 'memory':
+            ## Get data from the recorder
+            sr_dict = nest.GetStatus(self.sr)[0]['events']
+            mm_dict = nest.GetStatus(self.mm)[0]['events']
+            
+            ## make sure the keys are the same as if recording to ascii
+            sr_dict['time_ms'] = sr_dict.pop('times')
+            mm_dict['time_ms'] = mm_dict.pop('times')
+            
+            sr_dict['sender'] = sr_dict.pop('senders')
+            mm_dict['sender'] = mm_dict.pop('senders')
+        else:
+            ## No other recording methods used at this point
+            print("Unsupported recording type")
         
         
         return mm_dict, sr_dict
     
-def prep_spikes(spikes):
+    def prep_spikes(self, spikes):
+        ## Get data for senders and times
+        times  = spikes['time_ms']
+        sender = spikes['sender']
+        
+        ## Order by sender
+        order = np.argsort(sender)
+        
+        times  = times[order]
+        sender = sender[order]
+        
+        ## we want to see silent neurons
+        unique_senders = np.unique(sender)
+        min_sender = min(unique_senders)
+        ## Add an empty list for every neuron that is silent.
+        ## This requires all recorded neurons to be added sequentially
+        data = [times[np.where(sender == i+min_sender)] if i + min_sender in unique_senders else np.array([]) for i in range(sum(self.nrec))]
+        ## Split when the sending neuron changes
+        # data = np.split(times, np.where(np.diff(sender))[0])
+        
+        return data
     
-    times  = spikes['time_ms']
-    sender = spikes['sender']
-    
-    order = np.argsort(sender)
-    
-    times  = times[order]
-    sender = sender[order]
-    
-    data = np.split(times, np.where(np.diff(sender))[0])
-    
-    return data
-    
+    def split_mmdata(self, mmdata):
+        sender = np.array(mmdata['sender'])
+        dict_1 = {key: [] for key in mmdata}
+        dict_2 = {key: [] for key in mmdata}
+        
+        ## split by values
+        min_sender = min(np.unique(sender))
+        
+        mask_1 = np.where((sender >= min_sender) & (sender <= min_sender+sum(self.nrec[:2])))
+        mask_2 = np.where((sender > min_sender+sum(self.nrec[:2])) & (sender <= min_sender+sum(self.nrec[:4])))
+        
+        for key in mmdata:
+            dict_1[key] = np.array(mmdata[key])[mask_1]
+            dict_2[key] = np.array(mmdata[key])[mask_2]
+        
+        return dict_1, dict_2
     
 
 # Helper functions
-def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, suffix="", figsize=(10, 7)):
+def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, prefix="", suffix="", figsize=(10, 7)):
     """
     Draws the scatterplot for the spiketimes of each neuronal population as well as
     a histogram of spiketimes over all neurons.
@@ -371,12 +413,12 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, suffix="", figsiz
     
     plt.tight_layout(pad=1)
 
-    plt.savefig(f"simresults/raster_{suffix}.png")
+    plt.savefig(f"simresults/{prefix}raster_{suffix}.png")
     
     plt.show()
     
 def create_spectrogram(data, fs, t_start, t_end, f_min, f_max):
-    _, _, _, im = plt.specgram(data, Fs=fs, NFFT=1024, noverlap=1024//2, xextent=[t_start, t_end])
+    _, _, _, im = plt.specgram(data, Fs=fs, NFFT=4096, noverlap=4096//2, xextent=[t_start, t_end])
     plt.colorbar(label='Power Spectral Density (dB/Hz)')
     plt.xlabel('Time (s)')
     plt.ylabel('Frequency (Hz)')

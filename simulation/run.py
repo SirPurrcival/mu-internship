@@ -3,10 +3,13 @@
 ######################
 import numpy as np
 import nest
-from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, prep_spikes, create_spectrogram
+from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram
 import time
 import pickle
 import pandas as pd
+
+from setup import setup
+setup()
 
 ###############################################################################
 ## Load config created by setup().
@@ -26,8 +29,8 @@ if params['verbose'] and rank == 0:
 ## Set NEST Variables ##
 ########################
 nest.ResetKernel()
-nest.local_num_threads = 32 ## adapt if necessary
-##nest.print_time = True if params['verbose'] == True else False
+nest.local_num_threads = 1 ## adapt if necessary
+## nest.print_time = True if params['verbose'] == True else False
 nest.resolution = params['resolution']
 nest.set_verbosity("M_WARNING")
 nest.overwrite_files = True
@@ -56,21 +59,21 @@ network = Network(params)
 if params['verbose'] and rank == 0:
     print(f"Time required for setup: {time.time() - st}\nPreparing network...")
 
-for i in range(len(params['layer_type'])):
-    network.addpop('iaf_psc_exp', params['layer_type'][i] , int(num_neurons[i]), params['cell_params'], record=True, nrec=int(params['R_scale']* num_neurons[i]))
+for i in range(len(params['pop_name'])):
+    network.addpop('iaf_psc_exp', params['pop_name'][i] , int(num_neurons[i]), params['cell_params'][i], record=True, nrec=int(params['R_scale']* num_neurons[i]))
 
 ###############################################################################
 ## Add background stimulation
 for i in range(len(ext_rates)):
     network.add_stimulation(source={'type': 'poisson_generator', 'rate': ext_rates[i], 'start': 0, 'stop': params['sim_time']}, 
-                            target=params['layer_type'][i], 
+                            target=params['pop_name'][i], 
                             c_specs={'rule': 'all_to_all'},
                             s_specs={'weight': params['ext_weights'][i],
                                      'delay': 1.5})
 
 ###############################################################################
 ## Connect the network
-network.connect_all(params['layer_type'], connections, params['syn_type'], synaptic_strength)
+network.connect_all(params['pop_name'], connections, params['syn_type'], synaptic_strength)
 
 ###############################################################################
 ## Add thalamic input
@@ -80,20 +83,20 @@ network.add_stimulation(source={'type': 'poisson_generator', 'rate': params['th_
                         target='thalamic_input', 
                         c_specs={'rule': 'all_to_all'},
                         s_specs={'weight': params['ext_weights'][0],
-                                 'delay': 1.5})
+                                  'delay': 1.5})
 
 pops = network.get_pops()
-network.connect(network.thalamic_population['thalamic_input'], pops['L4_E'], 
-                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0983 * len(network.get_pops()['L4_E']))}, 
+network.connect(network.thalamic_population['thalamic_input'], pops['L1_E'], 
+                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0983 * len(network.get_pops()['L1_E']))}, 
                 syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
-network.connect(network.thalamic_population['thalamic_input'], pops['L4_I'], 
-                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0619 * len(network.get_pops()['L4_I']))}, 
+network.connect(network.thalamic_population['thalamic_input'], pops['L1_I'], 
+                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0619 * len(network.get_pops()['L1_I']))}, 
                 syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
-network.connect(network.thalamic_population['thalamic_input'], pops['L6_E'], 
-                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0512 * len(network.get_pops()['L6_E']))}, 
+network.connect(network.thalamic_population['thalamic_input'], pops['L2_E'], 
+                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0512 * len(network.get_pops()['L1_E']))}, 
                 syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
-network.connect(network.thalamic_population['thalamic_input'], pops['L6_I'], 
-                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0196 * len(network.get_pops()['L6_I']))}, 
+network.connect(network.thalamic_population['thalamic_input'], pops['L2_I'], 
+                conn_specs={'rule': 'fixed_indegree', 'indegree': int(0.0196 * len(network.get_pops()['L1_I']))}, 
                 syn_specs={'weight': params['ext_weights'][0], 'delay': 1.5})
 
 if params['verbose'] and rank == 0:
@@ -119,18 +122,25 @@ if rank == 0:
     index = np.insert(np.cumsum(network.get_nrec()), 0, 0)
     
     ## Split spikes into subarrays per population
-    spike_data = [prep_spikes(spikes)[index[i]:index[i+1]] for i in range(len(index)-1)]
+    spike_data = [network.prep_spikes(spikes)[index[i]:index[i+1]] for i in range(len(index)-1)]
+    
+    for population, name in zip(spike_data, params['pop_name']):
+        ## Print the number of silent neurons
+        print(f"Number of silent neurons in {name}: {sum([1 if len(x)==0 else 0 for x in population])}")
+    
+    ## split vm into the two networks
+    mm_1, mm_2 = network.split_mmdata(mmdata)
+    
     
     ###########################################################################
     ## Calculate the average membrane potential across the whole network
     def average_membrane_voltage(data):
         df = pd.DataFrame(data)
         averaged_data = df.groupby('time_ms')['V_m'].mean().to_dict().values()
-        #.to_dict()
         return np.array(list(averaged_data), dtype='float')
     
-    vm_avg = average_membrane_voltage(mmdata)
-
+    vm_avg_1 = average_membrane_voltage(mm_1)
+    vm_avg_2 = average_membrane_voltage(mm_2)
 
     if params['verbose'] and rank == 0:
         print(f"Done. Time taken for data gathering and preparation: {time.time() - st}")
@@ -147,11 +157,12 @@ if rank == 0:
         
         #######################################################################
         ## Plot spike data
-        raster(spike_data, vm_avg, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), suffix=f"{str(int(params['th_in'])):0>4}")
+        raster(spike_data[:2], vm_avg_1, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N1_", suffix=f"{str(int(params['th_in'])):0>4}")
+        raster(spike_data[2:], vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}")
 
         #######################################################################
         ## Display the average firing rate in Hz
-        rate(spikes, params['rec_start'], params['rec_stop'])
+        rate(spike_data, params['rec_start'], params['rec_stop'])
         
         if params['verbose'] and rank == 0:
             print(f"Time required for graphing grid: {time.time() - st}")
@@ -161,22 +172,23 @@ if rank == 0:
         
         ## Max and min frequency in Hz
         f_min = 0
-        f_max = 150
+        f_max = 100
         
         ## Sampling rate in Hz
         fs = 1000 / params['resolution']
         num_timesteps = int((params['rec_start'] - params['rec_stop']) * (1000 / params['resolution']))
         
-        create_spectrogram(vm_avg, fs, params['rec_start'], params['rec_stop'], f_min, f_max) 
+        create_spectrogram(vm_avg_1, fs, params['rec_start'], params['rec_stop'], f_min, f_max)
+        create_spectrogram(vm_avg_2, fs, params['rec_start'], params['rec_stop'], f_min, f_max)
     
     ###########################################################################
     ## Calculate measures 
-    irregularity = [get_irregularity(population) for population in spike_data]
-    firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
-    synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
+    # irregularity = [get_irregularity(population) for population in spike_data]
+    # firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
+    # synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
     
     ###########################################################################
     ## Write results to file
-    with open("sim_results", 'wb') as f:
-        data = (irregularity, synchrony, firing_rate)
-        pickle.dump(data, f)
+    # with open("sim_results", 'wb') as f:
+    #     data = (irregularity, synchrony, firing_rate)
+    #     pickle.dump(data, f)
