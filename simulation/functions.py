@@ -428,32 +428,65 @@ def create_spectrogram(data, fs, t_start, t_end, f_min, f_max):
 
     return im.get_array()
 
-def create_spectral_density_plot(timesteps, resolution, data):
+def spectral_density(timesteps, resolution, data, cutoff=1e7, plot=True, get_peak=False):
         ## Compute the power spectral density (PSD)
         frequencies = np.fft.fftfreq(timesteps, resolution)
-        
+
         ## Compute the Fourier transform
-        plt.figure()
+        if plot:
+            plt.figure()
+            
+        psd_return = []
         if type(data) == list:
             for i in range(len(data)):
                 data_zero = data[i] - np.mean(data[i])
                 xf = np.fft.fft(data_zero)
                 psd = np.abs(xf)**2
-                plt.plot(frequencies, psd, label=f"Dataset {i+1}")
+                psd_return.append(psd)
+                if plot:
+                    plt.plot(frequencies, psd, label=f"Dataset {i+1}")
         else:
             data_zero = data - np.mean(data)
             xf = np.fft.fft(data_zero) 
             ## Compute the power spectral density
             psd = np.abs(xf)**2  
             ## Plot the spectral density
-            plt.plot(frequencies, psd)
+            if plot:
+                plt.plot(frequencies, psd)
+            psd_return.append(psd)
+            
+        if plot:
+            plt.xlabel('Frequency [Hz]')
+            plt.ylabel('Power Spectral Density')
+            plt.xlim(0, 80)
+            plt.axhline(y=cutoff, color='black', linestyle='--')
+            plt.title('Spectral Density Plot')
+            plt.grid(True)
+            plt.show()
         
-        plt.xlabel('Frequency [Hz]')
-        plt.ylabel('Power Spectral Density')
-        plt.xlim(0, 80)
-        plt.title('Spectral Density Plot')
-        plt.grid(True)
-        plt.show()
+        if get_peak:
+            if len(psd_return) > 1:
+                ## Find indices where the greatest peak lies. If the peak is below a
+                ## certain cutoff value, add -1 instead to signify no sufficient
+                ## synchronous behaviour
+                max_index = [np.argmax(i[:len(i)//2]) if i[np.argmax(i[:len(i)//2])] >= cutoff else -1 for i in psd_return]
+                
+                ## If there was no significant synchronous behaviour return 0
+                ## as 'peak frequency'
+                peak = np.array([frequencies[x] if x > -1 else -1 for x in max_index])
+                
+                ## Delete negative frequencies except -1
+                peak = peak[peak>=-1]
+                    
+            else:
+                max_index = np.argmax(psd_return[0][:len(psd_return[0])//2])
+                
+                if psd_return[0][max_index] >= cutoff:
+                    peak = frequencies[max_index]
+                    peak = peak[peak>0]
+                else:
+                    peak = -1
+            return peak
   
 def rate(spikes, rec_start, rec_stop):
     """

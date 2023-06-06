@@ -3,7 +3,7 @@
 ######################
 import numpy as np
 import nest
-from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram, create_spectral_density_plot
+from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram, spectral_density
 import time
 import pickle
 import pandas as pd
@@ -160,7 +160,7 @@ if rank == 0:
         ## Plot spike data
         raster(spike_data[:2], vm_avg_1, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N1_", suffix=f"{str(int(params['th_in'])):0>4}")
         raster(spike_data[2:], vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}")
-        raster(spike_data, vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}")
+        raster(spike_data, np.average([vm_avg_1, vm_avg_2], axis=0), params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N3_", suffix=f"{str(int(params['th_in'])):0>4}")
 
         #######################################################################
         ## Display the average firing rate in Hz
@@ -183,22 +183,94 @@ if rank == 0:
         create_spectrogram(vm_avg_1, fs, params['rec_start'], params['rec_stop'], f_min, f_max)
         create_spectrogram(vm_avg_2, fs, params['rec_start'], params['rec_stop'], f_min, f_max)
         
-        # create_spectral_density_plot(len(vm_avg_1), params['resolution']*1e-3, vm_avg_1)
-        # create_spectral_density_plot(len(vm_avg_1), params['resolution']*1e-3, vm_avg_2)
+        #spectral_density(len(vm_avg_1), params['resolution']*1e-3, vm_avg_1, get_peak=True)
+        #spectral_density(len(vm_avg_1), params['resolution']*1e-3, vm_avg_2, get_peak=True)
         
-        create_spectral_density_plot(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2])
+        ## Calculate the highest frequency in the data
+        peaks = spectral_density(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2], plot=True, get_peak=True)
+        
+        ## Check for synchronous behaviour
+        for i in range(len(peaks)):
+            if peaks[i] < 0:
+                print(f"No synchronous behaviour in network {i+1}")
+            else:
+                print(f"Synchronous behaviour in network {i+1} with a peak at {peaks[i]}Hz")
+                
+        
+        ## Difference in frequencies between the populations
+        df = abs(peaks[0] - peaks[1])
+        
+        
+    from scipy.signal import correlate, welch
+    
+    def analyze_spike_trains(spike_trains, resolution=0.1):
+        ## Convert resolution to seconds
+        resolution_sec = resolution / 1000.0
+        
+        ## Calculate autocorrelations per neuron
+        autocorrelations = [correlate(spike_train, spike_train[::-1], mode='full') for spike_train in spike_trains]
+        
+        ## Calculate power spectral densities
+        power_spectral_densities = [welch(autocorr, 
+                                          fs=1 / resolution_sec, 
+                                          nperseg=min(len(autocorr), int(1 / resolution_sec)), 
+                                          nfft=int(1 / resolution_sec)) for autocorr in autocorrelations]
+        
+        ## Restrict the frequency range
+        power_spectral_densities = [(freqs[valid_indices], powers[valid_indices]) for freqs, powers in power_spectral_densities \
+                                    if len(valid_indices := np.where((freqs >= 5) & (freqs <= 100))[0]) > 0]
+            
 
+        ## Frequency bands of potential interest (mostly beta and gamma)
+        frequency_bands = {
+            'theta': (4 ,  8),
+            'alpha': (8 , 12),
+            'beta' : (13, 30),
+            'gamma': (30, 80)
+        }
         
+        ## Compute the total power per neuron in each of the previously defined
+        ## frequency bands
+        band_powers = {band: [] for band in frequency_bands}
+    
+        for power_spectrum in power_spectral_densities:
+            freqs, powers = power_spectrum
+            for band, (fmin, fmax) in frequency_bands.items():
+                band_indices = np.where((freqs >= fmin) & (freqs <= fmax))[0]
+                if len(band_indices) > 0:
+                    band_power = np.sum(powers[band_indices])
+                    band_powers[band].append(band_power)
+                else:
+                    band_powers[band].append(0)
         
+        ## Compute measures of synchrony
+        synchrony_measures = {}
+    
+        ## Peak coherence. Frequency with the highest power
+        synchrony_measures['peak_coherence'] = [np.argmax(powers) for freqs, powers in power_spectral_densities]
+    
+        ## Total power
+        synchrony_measures['total_power'] = [np.sum(powers) for _, powers in power_spectral_densities]
+    
+        gamma_power = np.mean(band_powers['gamma'])
+        theta_power = np.mean(band_powers['theta'])
+        synchrony_measures['gamma_to_theta_ratio'] = gamma_power / theta_power
+    
+        return autocorrelations, power_spectral_densities, band_powers, synchrony_measures
+            
+    outcomes = []
+    for data in spike_data:
+        outcomes.append(analyze_spike_trains(data))
+        
+    import matplotlib.pyplot as plt
+    for outcome in outcomes:
+        for item in outcome[2].values():
+            plt.plot(item)
+        plt.legend(outcome[2].keys())
+        plt.show()
     
     ###########################################################################
     ## Calculate measures 
-    irregularity = [get_irregularity(population) for population in spike_data]
-    firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
-    synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
-    
-    ###########################################################################
-    ## Write results to file
-    # with open("sim_results", 'wb') as f:
-    #     data = (irregularity, synchrony, firing_rate)
-    #     pickle.dump(data, f)
+    # irregularity = [get_irregularity(population) for population in spike_data]
+    # firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
+    # synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]

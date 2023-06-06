@@ -82,31 +82,31 @@ def setup():
         
         'pop_name'   : ['L1_E', 'L1_I',
                         'L2_E' , 'L2_I'],
-        'connection_strength': 0.6
+        'connection_strength': 0.0
         }
     ## AI Regime
     # {
-    #                      'V_m'        :  -70.,
-    #                      'V_th'       :  -50.,
-    #                      'V_reset'    :  -76.,
-    #                      'C_m'        :  250.,
-    #                      't_ref'      :    3.,
-    #                      'tau_syn_ex' :     1,
-    #                      'tau_syn_in' :     1,
-    #                      'E_L'        : -65.0,
-    #                      'tau_m'      :  20.0,
-    #                  },
-    #                  {
-    #                      'V_m'        :  -70.,
-    #                      'V_th'       :  -49.,
-    #                      'V_reset'    :  -76.,
-    #                      'C_m'        :  250.,
-    #                      't_ref'      :    4.,
-    #                      'tau_syn_ex' :     1,
-    #                      'tau_syn_in' :     1,
-    #                      'E_L'        : -65.0,
-    #                      'tau_m'      :  20.0,
-    #                  },
+    #                       'V_m'        :  -70.,
+    #                       'V_th'       :  -50.,
+    #                       'V_reset'    :  -76.,
+    #                       'C_m'        :  250.,
+    #                       't_ref'      :    3.,
+    #                       'tau_syn_ex' :     1,
+    #                       'tau_syn_in' :     1,
+    #                       'E_L'        : -65.0,
+    #                       'tau_m'      :  20.0,
+    #                   },
+    #                   {
+    #                       'V_m'        :  -70.,
+    #                       'V_th'       :  -49.,
+    #                       'V_reset'    :  -76.,
+    #                       'C_m'        :  250.,
+    #                       't_ref'      :    4.,
+    #                       'tau_syn_ex' :     1,
+    #                       'tau_syn_in' :     1,
+    #                       'E_L'        : -65.0,
+    #                       'tau_m'      :  20.0,
+    #                   },
     ###########################################################################
     ## Gamma/Beta Oscillations
     # [{
