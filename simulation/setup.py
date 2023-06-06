@@ -16,10 +16,10 @@ def setup():
     
     ## Recording and simulation parameters
     params = {
-        'rec_start'  :   1000.,                                                # start point for data recording
-        'rec_stop'   :   4000.,                                                # end points for data recording
+        'rec_start'  :    200.,                                                # start point for data recording
+        'rec_stop'   :   2000.,                                                # end points for data recording
         'record_to'  :'memory',
-        'sim_time'   :   4000.,                                                # Time the network is simulated in ms
+        'sim_time'   :   2000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -31,67 +31,140 @@ def setup():
         'resolution' :     0.1,                                                # Resolution of the simulaton
         'transient'  :     200,                                                # Ignore the first x ms of the simulation
         'th_in'      :      0.,                                                # Thalamic input in Hz
-        'th_start'   :   2000.,
-        'th_stop'    :   2020.,
+        'th_start'   :    500.,
+        'th_stop'    :    510.,
         'num_neurons': np.array([400, 100, 400, 100]),
-        'cell_params'  : [ {
-                             'V_m'        :  -70.,
-                             'V_th'       :  -50.,
-                             'V_reset'    :  -76.,
-                             'C_m'        :  250.,
-                             't_ref'      :    3.,
-                             'tau_syn_ex' :     1,
-                             'tau_syn_in' :     1,
-                             'E_L'        : -65.0,
-                             'tau_m'      :  20.0,
-                         },
-                         {
-                             'V_m'        :  -70.,
-                             'V_th'       :  -49.,
-                             'V_reset'    :  -76.,
-                             'C_m'        :  250.,
-                             't_ref'      :    4.,
-                             'tau_syn_ex' :     1,
-                             'tau_syn_in' :     1,
-                             'E_L'        : -65.0,
-                             'tau_m'      :  20.0,
-                         },
-                         {
+        'cell_params'  : [{
                             'V_m'        :  -70.,
                             'V_th'       :  -50.,
                             'V_reset'    :  -70.,
                             'C_m'        :  250.,
-                            't_ref'      :    3.,
-                            'tau_syn_ex' :     1,
-                            'tau_syn_in' :     2,
+                            't_ref'      :    2.,
+                            'tau_syn_ex' :   0.95,
+                            'tau_syn_in' :   .25,
                             'E_L'        : -65.0,
-                            'tau_m'      :  30.0,
+                            'tau_m'      :  27.0,
                         },
                         {
                             'V_m'        :  -70.,
                             'V_th'       :  -49.,
                             'V_reset'    :  -70.,
                             'C_m'        :  250.,
-                            't_ref'      :    4.,
-                            'tau_syn_ex' :    1.,
-                            'tau_syn_in' :    1.,
+                            't_ref'      :    2.,
+                            'tau_syn_ex' :   0.9,
+                            'tau_syn_in' :    .25,
                             'E_L'        : -65.0,
-                            'tau_m'      :  25.0,
+                            'tau_m'      :  23.0,
+                        },
+                         {
+                            'V_m'        :  -70.,
+                            'V_th'       :  -50.,
+                            'V_reset'    :  -70.,
+                            'C_m'        :  250.,
+                            't_ref'      :    2.,
+                            'tau_syn_ex' :   1.3,
+                            'tau_syn_in' :   .35,
+                            'E_L'        : -65.0,
+                            'tau_m'      :  28.0,
+                        },
+                        {
+                            'V_m'        :  -70.,
+                            'V_th'       :  -49.,
+                            'V_reset'    :  -70.,
+                            'C_m'        :  250.,
+                            't_ref'      :    2.,
+                            'tau_syn_ex' :   1.2,
+                            'tau_syn_in' :   .5,
+                            'E_L'        : -65.0,
+                            'tau_m'      :  24.0,
                         }],
+        ## Increase in tau_syn_ex -> Increase in frequency
+        
         'pop_name'   : ['L1_E', 'L1_I',
-                        'L2_E' , 'L2_I']
+                        'L2_E' , 'L2_I'],
+        'connection_strength': 0.6
         }
+    ## AI Regime
+    # {
+    #                      'V_m'        :  -70.,
+    #                      'V_th'       :  -50.,
+    #                      'V_reset'    :  -76.,
+    #                      'C_m'        :  250.,
+    #                      't_ref'      :    3.,
+    #                      'tau_syn_ex' :     1,
+    #                      'tau_syn_in' :     1,
+    #                      'E_L'        : -65.0,
+    #                      'tau_m'      :  20.0,
+    #                  },
+    #                  {
+    #                      'V_m'        :  -70.,
+    #                      'V_th'       :  -49.,
+    #                      'V_reset'    :  -76.,
+    #                      'C_m'        :  250.,
+    #                      't_ref'      :    4.,
+    #                      'tau_syn_ex' :     1,
+    #                      'tau_syn_in' :     1,
+    #                      'E_L'        : -65.0,
+    #                      'tau_m'      :  20.0,
+    #                  },
+    ###########################################################################
+    ## Gamma/Beta Oscillations
+    # [{
+    #                     'V_m'        :  -70.,
+    #                     'V_th'       :  -50.,
+    #                     'V_reset'    :  -70.,
+    #                     'C_m'        :  250.,
+    #                     't_ref'      :    2.,
+    #                     'tau_syn_ex' :   0.95,
+    #                     'tau_syn_in' :   .25,
+    #                     'E_L'        : -65.0,
+    #                     'tau_m'      :  27.0,
+    #                 },
+    #                 {
+    #                     'V_m'        :  -70.,
+    #                     'V_th'       :  -49.,
+    #                     'V_reset'    :  -70.,
+    #                     'C_m'        :  250.,
+    #                     't_ref'      :    2.,
+    #                     'tau_syn_ex' :   0.9,
+    #                     'tau_syn_in' :    .25,
+    #                     'E_L'        : -65.0,
+    #                     'tau_m'      :  23.0,
+    #                 },
+    #                  {
+    #                     'V_m'        :  -70.,
+    #                     'V_th'       :  -50.,
+    #                     'V_reset'    :  -70.,
+    #                     'C_m'        :  250.,
+    #                     't_ref'      :    2.,
+    #                     'tau_syn_ex' :   1.3,
+    #                     'tau_syn_in' :   .25,
+    #                     'E_L'        : -65.0,
+    #                     'tau_m'      :  28.0,
+    #                 },
+    #                 {
+    #                     'V_m'        :  -70.,
+    #                     'V_th'       :  -49.,
+    #                     'V_reset'    :  -70.,
+    #                     'C_m'        :  250.,
+    #                     't_ref'      :    2.,
+    #                     'tau_syn_ex' :   1.3,
+    #                     'tau_syn_in' :   .5,
+    #                     'E_L'        : -65.0,
+    #                     'tau_m'      :  24.0,
+    #                 }]
     
     ################################################################
     ## Specify connectivity in and between layers and populations ##
     ################################################################
     
-    # Connectivity matrix                
+    # Connectivity matrix
+    k = params['connection_strength']               
     params['connectivity'] = np.array(
-            [[0.1, 0.25, 0.0 , 0.0],
-             [0.5 , 0.25, 0.0 , 0.0],
-             [0.0 , 0.0, 0.1, 0.3],
-             [0.0 , 0.0, 0.45 , 0.25]]
+            [[0.1 , 0.25, k    , k   ],
+             [0.5 , 0.25, k    , k   ],
+             [k   , k   , 0.1  , 0.3 ],
+             [k   , k   , 0.45 , 0.25]]
             )
     
     ################################

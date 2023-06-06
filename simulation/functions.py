@@ -427,6 +427,33 @@ def create_spectrogram(data, fs, t_start, t_end, f_min, f_max):
     plt.show()
 
     return im.get_array()
+
+def create_spectral_density_plot(timesteps, resolution, data):
+        ## Compute the power spectral density (PSD)
+        frequencies = np.fft.fftfreq(timesteps, resolution)
+        
+        ## Compute the Fourier transform
+        plt.figure()
+        if type(data) == list:
+            for i in range(len(data)):
+                data_zero = data[i] - np.mean(data[i])
+                xf = np.fft.fft(data_zero)
+                psd = np.abs(xf)**2
+                plt.plot(frequencies, psd, label=f"Dataset {i+1}")
+        else:
+            data_zero = data - np.mean(data)
+            xf = np.fft.fft(data_zero) 
+            ## Compute the power spectral density
+            psd = np.abs(xf)**2  
+            ## Plot the spectral density
+            plt.plot(frequencies, psd)
+        
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Power Spectral Density')
+        plt.xlim(0, 80)
+        plt.title('Spectral Density Plot')
+        plt.grid(True)
+        plt.show()
   
 def rate(spikes, rec_start, rec_stop):
     """

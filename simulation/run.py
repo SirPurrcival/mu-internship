@@ -3,12 +3,13 @@
 ######################
 import numpy as np
 import nest
-from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram
+from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram, create_spectral_density_plot
 import time
 import pickle
 import pandas as pd
 
 from setup import setup
+
 setup()
 
 ###############################################################################
@@ -159,6 +160,7 @@ if rank == 0:
         ## Plot spike data
         raster(spike_data[:2], vm_avg_1, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N1_", suffix=f"{str(int(params['th_in'])):0>4}")
         raster(spike_data[2:], vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}")
+        raster(spike_data, vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}")
 
         #######################################################################
         ## Display the average firing rate in Hz
@@ -176,16 +178,24 @@ if rank == 0:
         
         ## Sampling rate in Hz
         fs = 1000 / params['resolution']
-        num_timesteps = int((params['rec_start'] - params['rec_stop']) * (1000 / params['resolution']))
+        num_timesteps = int((params['rec_stop'] - params['rec_start']) * (1000 / params['resolution']))
         
         create_spectrogram(vm_avg_1, fs, params['rec_start'], params['rec_stop'], f_min, f_max)
         create_spectrogram(vm_avg_2, fs, params['rec_start'], params['rec_stop'], f_min, f_max)
+        
+        # create_spectral_density_plot(len(vm_avg_1), params['resolution']*1e-3, vm_avg_1)
+        # create_spectral_density_plot(len(vm_avg_1), params['resolution']*1e-3, vm_avg_2)
+        
+        create_spectral_density_plot(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2])
+
+        
+        
     
     ###########################################################################
     ## Calculate measures 
-    # irregularity = [get_irregularity(population) for population in spike_data]
-    # firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
-    # synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
+    irregularity = [get_irregularity(population) for population in spike_data]
+    firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
+    synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
     
     ###########################################################################
     ## Write results to file
