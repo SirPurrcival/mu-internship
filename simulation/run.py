@@ -8,9 +8,9 @@ import time
 import pickle
 import pandas as pd
 
-from setup import setup
-
-setup()
+## Disable this if you run any kind of opt_ script
+# from setup import setup
+# setup()
 
 ###############################################################################
 ## Load config created by setup().
@@ -114,6 +114,10 @@ if params['verbose'] and rank == 0:
 ## Data fetching and preparation
 if rank == 0:
     ###########################################################################
+    ## Create results dictionary
+    results = {}
+    
+    ###########################################################################
     ## Fetch data
     mmdata, spikes = network.get_data()
     
@@ -125,9 +129,21 @@ if rank == 0:
     ## Split spikes into subarrays per population
     spike_data = [network.prep_spikes(spikes)[index[i]:index[i+1]] for i in range(len(index)-1)]
     
+    ## Check for silent populations
+    run_borked = False
     for population, name in zip(spike_data, params['pop_name']):
         ## Print the number of silent neurons
-        print(f"Number of silent neurons in {name}: {sum([1 if len(x)==0 else 0 for x in population])}")
+        silent_neurons = sum([1 if len(x) == 0 else 0 for x in population])
+        print(f"Number of silent neurons in {name}: {silent_neurons}")
+        if silent_neurons > 0:
+            run_borked = True
+            results['ISI_mean'] = -1
+            results['ISI_std']  = -1
+            results['CV']       = -1
+            with open("sim_results", 'wb') as f:
+                pickle.dump(results, f)
+            raise Exception("Run borked, silent neurons")
+            
     
     ## split vm into the two networks
     mm_1, mm_2 = network.split_mmdata(mmdata)
@@ -186,23 +202,23 @@ if rank == 0:
         #spectral_density(len(vm_avg_1), params['resolution']*1e-3, vm_avg_1, get_peak=True)
         #spectral_density(len(vm_avg_1), params['resolution']*1e-3, vm_avg_2, get_peak=True)
         
-        ## Calculate the highest frequency in the data
-        peaks = spectral_density(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2], plot=True, get_peak=True)
-        
-        ## Check for synchronous behaviour
-        for i in range(len(peaks)):
-            if peaks[i] < 0:
-                print(f"No synchronous behaviour in network {i+1}")
-            else:
-                print(f"Synchronous behaviour in network {i+1} with a peak at {peaks[i]} Hz")
-                
-        
-        ## Difference in frequencies between the populations
-        df = abs(peaks[0] - peaks[1])
+    ## Calculate the highest frequency in the data
+    peaks = spectral_density(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2], plot=params['opt_run'], get_peak=True)
+    
+    ## Check for synchronous behaviour
+    for i in range(len(peaks)):
+        if peaks[i] < 0:
+            print(f"No synchronous behaviour in network {i+1}")
+        else:
+            print(f"Synchronous behaviour in network {i+1} with a peak at {peaks[i]} Hz")
+            
+    
+    ## Difference in frequencies between the populations
+    df = abs(peaks[0] - peaks[1])
         
         
     from scipy.signal import correlate, welch
-   
+       
     def analyze_spike_trains(spike_trains, resolution=0.1):
         """
         Parameters are chosen in such a way as to havea frequency resolution of 1Hz. 
@@ -226,7 +242,7 @@ if rank == 0:
         power_spectral_densities = [(freqs[valid_indices], powers[valid_indices]) for freqs, powers in power_spectral_densities \
                                     if len(valid_indices := np.where((freqs >= 5) & (freqs <= 100))[0]) > 0]
             
-
+    
         ## Frequency bands of potential interest (mostly beta and gamma)
         frequency_bands = {
             'theta': (4 ,  8),
@@ -262,8 +278,15 @@ if rank == 0:
         gamma_power = np.mean(band_powers['gamma'])
         theta_power = np.mean(band_powers['theta'])
         synchrony_measures['gamma_to_theta_ratio'] = gamma_power / theta_power
-    
-        return autocorrelations, power_spectral_densities, band_powers, synchrony_measures
+        
+        out_dict = {
+            'autocorrelations'        : autocorrelations,
+            'power spectral densities': power_spectral_densities,
+            'band powers'             : band_powers,
+            'synchrony measures'      : synchrony_measures
+            }
+        
+        return  out_dict
             
     outcomes = []
     for data in spike_data:
@@ -271,9 +294,9 @@ if rank == 0:
         
     import matplotlib.pyplot as plt
     for outcome in outcomes:
-        for item in outcome[2].values():
+        for item in outcome['band powers'].values():
             plt.plot(item)
-        plt.legend(outcome[2].keys())
+        plt.legend(outcome['band powers'].keys())
         plt.show()
     if params['verbose'] and rank == 0:
         print(f"Done. Final time: {time.time() - st}")
@@ -283,3 +306,26 @@ if rank == 0:
     # irregularity = [get_irregularity(population) for population in spike_data]
     # firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
     # synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
+    
+    
+    def ISI(data):
+        return np.concatenate([np.diff(d) for d in data])
+    
+    def calculate_CV(isi_data):
+        mean = np.mean(isi_data)
+        isi_std = np.std(isi_data)
+        cv = isi_std / isi_mean
+        return cv
+    
+    ISI_data = [ISI(d) for d in spike_data]
+    ISI_mean = [np.mean(d) for d in ISI_data]
+    ISI_std  = [np.std(d) for d in ISI_data]
+    ISI_CV   = [std / mean for std, mean in zip(ISI_std, ISI_mean)]
+    
+    results['ISI_mean'] = ISI_mean
+    results['ISI_std']  = ISI_std
+    results['CV']       = ISI_CV
+    
+    ## Write to disk
+    with open("sim_results", 'wb') as f:
+        pickle.dump(results, f)

@@ -313,7 +313,7 @@ class Network:
         min_sender = min(unique_senders)
         ## Add an empty list for every neuron that is silent.
         ## This requires all recorded neurons to be added sequentially
-        data = [times[np.where(sender == i+min_sender)] if i + min_sender in unique_senders else np.array([]) for i in range(sum(self.nrec))]
+        data = [np.sort(times[np.where(sender == i+min_sender)]) if i + min_sender in unique_senders else np.array([]) for i in range(sum(self.nrec))]
         ## Split when the sending neuron changes
         # data = np.split(times, np.where(np.diff(sender))[0])
         
