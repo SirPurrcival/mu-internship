@@ -194,7 +194,7 @@ if rank == 0:
             if peaks[i] < 0:
                 print(f"No synchronous behaviour in network {i+1}")
             else:
-                print(f"Synchronous behaviour in network {i+1} with a peak at {peaks[i]}Hz")
+                print(f"Synchronous behaviour in network {i+1} with a peak at {peaks[i]} Hz")
                 
         
         ## Difference in frequencies between the populations
@@ -202,8 +202,14 @@ if rank == 0:
         
         
     from scipy.signal import correlate, welch
-    
+   
     def analyze_spike_trains(spike_trains, resolution=0.1):
+        """
+        Parameters are chosen in such a way as to havea frequency resolution of 1Hz. 
+        Time resolution scales with more available data, meaning higher frequency or 
+        longer simulations as nperseg can be maximally as high as the number of data points.
+        """
+        
         ## Convert resolution to seconds
         resolution_sec = resolution / 1000.0
         
@@ -230,7 +236,8 @@ if rank == 0:
         }
         
         ## Compute the total power per neuron in each of the previously defined
-        ## frequency bands
+        ## frequency bands. Probably needs to be normalized
+        ## TODO: Normalize
         band_powers = {band: [] for band in frequency_bands}
     
         for power_spectrum in power_spectral_densities:
@@ -268,6 +275,8 @@ if rank == 0:
             plt.plot(item)
         plt.legend(outcome[2].keys())
         plt.show()
+    if params['verbose'] and rank == 0:
+        print(f"Done. Final time: {time.time() - st}")
     
     ###########################################################################
     ## Calculate measures 
