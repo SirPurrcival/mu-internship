@@ -9,8 +9,8 @@ import pickle
 import pandas as pd
 
 ## Disable this if you run any kind of opt_ script
-# from setup import setup
-# setup()
+from setup import setup
+setup()
 
 ###############################################################################
 ## Load config created by setup().
@@ -203,7 +203,7 @@ if rank == 0:
         #spectral_density(len(vm_avg_1), params['resolution']*1e-3, vm_avg_2, get_peak=True)
         
     ## Calculate the highest frequency in the data
-    peaks = spectral_density(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2], plot=params['opt_run'], get_peak=True)
+    peaks = spectral_density(len(vm_avg_1), params['resolution']*1e-3, [vm_avg_1, vm_avg_2], plot=not params['opt_run'], get_peak=True)
     
     ## Check for synchronous behaviour
     for i in range(len(peaks)):
@@ -291,15 +291,16 @@ if rank == 0:
     outcomes = []
     for data in spike_data:
         outcomes.append(analyze_spike_trains(data))
-        
-    import matplotlib.pyplot as plt
-    for outcome in outcomes:
-        for item in outcome['band powers'].values():
-            plt.plot(item)
-        plt.legend(outcome['band powers'].keys())
-        plt.show()
-    if params['verbose'] and rank == 0:
-        print(f"Done. Final time: {time.time() - st}")
+    
+    if not params['opt_run']:
+        import matplotlib.pyplot as plt
+        for outcome in outcomes:
+            for item in outcome['band powers'].values():
+                plt.plot(item)
+            plt.legend(outcome['band powers'].keys())
+            plt.show()
+        if params['verbose'] and rank == 0:
+            print(f"Done. Final time: {time.time() - st}")
     
     ###########################################################################
     ## Calculate measures 
@@ -312,7 +313,7 @@ if rank == 0:
         return np.concatenate([np.diff(d) for d in data])
     
     def calculate_CV(isi_data):
-        mean = np.mean(isi_data)
+        isi_mean = np.mean(isi_data)
         isi_std = np.std(isi_data)
         cv = isi_std / isi_mean
         return cv

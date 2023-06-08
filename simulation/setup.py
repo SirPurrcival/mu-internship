@@ -40,7 +40,7 @@ def setup():
                             'V_reset'    :  -70.,
                             'C_m'        :  250.,
                             't_ref'      :    2.,
-                            'tau_syn_ex' :   0.95,
+                            'tau_syn_ex' :   0.7,
                             'tau_syn_in' :   .25,
                             'E_L'        : -65.0,
                             'tau_m'      :  27.0,
