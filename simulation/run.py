@@ -9,8 +9,8 @@ import pickle
 import pandas as pd
 
 ## Disable this if you run any kind of opt_ script
-from setup import setup
-setup()
+# from setup import setup
+# setup()
 
 ###############################################################################
 ## Load config created by setup().
@@ -324,6 +324,7 @@ if rank == 0:
     ISI_CV   = [std / mean for std, mean in zip(ISI_std, ISI_mean)]
     
     results['ISI_mean'] = ISI_mean
+    results['firing_rate'] = 1/(np.array(ISI_mean)/1000)
     results['ISI_std']  = ISI_std
     results['CV']       = ISI_CV
     

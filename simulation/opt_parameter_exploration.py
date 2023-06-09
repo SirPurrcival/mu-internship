@@ -27,17 +27,22 @@ params['verbose']  = True
 params['opt_run']  = True
 
 opt_results = {
-    'tau_m'     : [],
-    'tau_syn_ex': [],
-    'CV'        : [],
-    'stdev'     : [],
-    'mean'      : []
+    'tau_m'      : [],
+    'tau_syn_ex' : [],
+    'CV'         : [],
+    'stdev'      : [],
+    'mean'       : [],
+    'firing_rate': []
     }
 
 ## Change values and run the function with different parameters
+iteration = 1
+total_iter = len(range(19,31,1)) * len(np.arange(0.7, 1.3, 0.1))
+
 for tau_m in range(18,30,1):
     for tau_syn_ex in np.arange(0.7, 1.4, 0.1):
         i = 0
+        print(f"================= Iteration {iteration} of {total_iter} =================")
         print("Starting step...")
         st = time.time()
         params['cell_params'][i]['tau_m']      = tau_m
@@ -64,17 +69,17 @@ for tau_m in range(18,30,1):
         else:
             command = f"mpirun -n {n_workers} --verbose python3 run.py"
         
-        process = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, ##stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        process = subprocess.Popen(command.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, ##stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    cwd=cwd, env=env)
         
         return_code = process.wait()
         print("Script exited with return code:", return_code)
-        output, error = process.communicate()
-        print("Standard output:\n", output.decode())
-        print("Error output:\n", error.decode())
+        # output, error = process.communicate()
+        # print("Standard output:\n", output.decode())
+        # print("Error output:\n", error.decode())
         
-        process.stdout.close()
-        process.stderr.close()
+        # process.stdout.close()
+        # process.stderr.close()
         
         # Read results from file
         with open("sim_results", 'rb') as f:
@@ -83,9 +88,10 @@ for tau_m in range(18,30,1):
         opt_results['CV'].append(data['CV'])
         opt_results['mean'].append(data['ISI_mean'])
         opt_results['stdev'].append(data['ISI_std'])
+        opt_results['firing_rate'].append(data['firing_rate'])
         
-        print(f"Duration of simulation: {time.time() - st} \
-              \n================= Next iteration =================")
+        print(f"Duration of iteration iteration: {time.time() - st}")
+        iteration += 1
             
 ## Do analysis and figure stuff here
 
@@ -127,11 +133,13 @@ tau_syn_ex_data = np.unique(opt_results['tau_syn_ex'])
 CV_data   = [x[0] if type(x) == list else x for x in opt_results['CV']]
 mean_data = [x[0] if type(x) == list else x for x in opt_results['mean']]
 std_data  = [x[0] if type(x) == list else x for x in opt_results['stdev']]
+fr_data   = [x[0] if type(x) == list else x for x in opt_results['firing_rate']]
 
 ## Plot heatmaps
 plot_heatmap(tau_m_data, tau_syn_ex_data, CV_data, "Coefficient of variation")
 plot_heatmap(tau_m_data, tau_syn_ex_data, mean_data, "Mean")
 plot_heatmap(tau_m_data, tau_syn_ex_data, std_data, "Standard Deviation")
+plot_heatmap(tau_m_data, tau_syn_ex_data, fr_data, "Firing rate")
 
 
 
