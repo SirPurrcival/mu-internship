@@ -11,14 +11,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import math
 
-ar = np.arange(5, 30, 1)
+ar = np.arange(0.25, 1, 0.1)
 for syn_ex in ar:
 
     nest.ResetKernel()
     rec = nest.Create("multimeter", params={'record_from': ["V_m"]})
-    neuron = nest.Create("iaf_psc_exp", 1,  params={'tau_m': syn_ex})
+    neuron = nest.Create("iaf_psc_exp", 1,  params={'tau_syn_in': syn_ex})
     stimulus = nest.Create("poisson_generator")
-    stimulus.rate = 10.
+    stimulus.rate = 1000000.
     
     nest.Connect(stimulus, neuron)
     nest.Connect(rec, neuron)

@@ -109,7 +109,7 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     ## Set values for invalid trials to black
     masked_data = np.ma.masked_where(plot_pop==-1, plot_pop)
 
-    cmap = plt.get_cmap('viridis')
+    cmap = plt.get_cmap('viridis').copy()
     cmap.set_bad(color='black')
     
     ## Plot

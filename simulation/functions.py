@@ -3,6 +3,7 @@ import numpy as np
 import nest
 import itertools
 import random
+from scipy.signal import hilbert
 
 ## 
 # Create classes
@@ -375,7 +376,9 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, prefix="", suffix
     ax2.set_xlim([rec_start, rec_stop])
     ax3.set_xlim([rec_start, rec_stop])
     
-    ax1.set_ylim([0, sum(nrec)])
+    y_min = min(spikes['sender'])
+    
+    ax1.set_ylim([y_min, y_min + sum(nrec)])
     ax1.set_ylabel('Neuron ID')
     ax1.invert_yaxis()
     
@@ -389,9 +392,8 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, prefix="", suffix
     ## plt.plot(spikes['time_ms'][np.where(spikes['sender'] > 400)], spikes['sender'][np.where(spikes['sender']>400)], marker='o', markersize=0.1, linestyle='')
     ## and use spikes instead of spike_datafor much faster plotting
     pop_indices = np.insert(np.cumsum(nrec), 0, 0)
-    pop_min = min(spikes['sender'])
     for i in range(len(nrec)):
-        sender_range = (spikes['sender'] >= pop_min + pop_indices[i]) & (spikes['sender'] <= pop_min + pop_indices[i+1])
+        sender_range = (spikes['sender'] >= y_min + pop_indices[i]) & (spikes['sender'] <= y_min + pop_indices[i+1])
         ax1.plot(spikes['time_ms'][np.where(sender_range)], 
                  spikes['sender'][np.where(sender_range)],
                  linestyle='',
@@ -717,3 +719,24 @@ def get_spike_rate(times, params):
 def get_mean_spike_rate(times, params):
     times = times[times >= params['transient']]
     return times.size /  (params['sim_time'] - params['transient']) * 1000
+
+def compute_plv(spike_trains_1, spike_trains_2, rec_start, rec_stop, bin_width):
+    # Step 1: Determine the number of bins based on recording duration and bin width
+    num_bins = int((rec_stop - rec_start) / bin_width) + 1
+    time_bins = np.linspace(rec_start, rec_stop, num=num_bins)
+    
+    # Step 2: Preprocess spike train data
+    spike_counts_1 = [np.histogram(train, bins=time_bins)[0] for train in spike_trains_1]
+    spike_counts_2 = [np.histogram(train, bins=time_bins)[0] for train in spike_trains_2]
+    
+    # Step 3: Extract phase information
+    phase_1 = [np.angle(hilbert(counts)) for counts in spike_counts_1]
+    phase_2 = [np.angle(hilbert(counts)) for counts in spike_counts_2]
+    
+    # Step 4: Compute phase difference
+    phase_diff = [p1 - p2 for p1, p2 in zip(phase_1, phase_2)]
+    
+    # Step 5: Compute PLV
+    plv = abs(np.mean(np.exp(1j * np.concatenate(phase_diff))))
+    
+    return plv
