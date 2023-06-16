@@ -3,10 +3,11 @@
 ######################
 import numpy as np
 import nest
-from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram, spectral_density
+from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram, spectral_density, split_mmdata
 import time
 import pickle
 import pandas as pd
+import os
 
 ## Disable this if you run any kind of opt_ script
 # from setup import setup
@@ -22,7 +23,7 @@ with open("params", 'rb') as f:
 rank = nest.Rank()
 
 if params['verbose'] and rank == 0:
-    print("Begin setup")
+    print("Begin Setup")
     ## get the start time
     st = time.time()
 
@@ -30,7 +31,7 @@ if params['verbose'] and rank == 0:
 ## Set NEST Variables ##
 ########################
 nest.ResetKernel()
-nest.local_num_threads = 1 ## adapt if necessary
+nest.local_num_threads = 4 ## adapt if necessary
 ## nest.print_time = True if params['verbose'] == True else False
 nest.resolution = params['resolution']
 nest.set_verbosity("M_WARNING")
@@ -58,7 +59,7 @@ network = Network(params)
 ###############################################################################
 ## Populate the network
 if params['verbose'] and rank == 0:
-    print(f"Time required for setup: {time.time() - st}\nPreparing network...")
+    print(f"Time required for setup: {time.time() - st}\nRunning Nest with {nest.NumProcesses()} workers")
 
 for i in range(len(params['pop_name'])):
     network.addpop('iaf_psc_exp', params['pop_name'][i] , int(num_neurons[i]), params['cell_params'][i], record=True, nrec=int(params['R_scale']* num_neurons[i]))
@@ -110,43 +111,102 @@ network.simulate(params['sim_time'])
 if params['verbose'] and rank == 0:
     print(f"Total time required for simulation: {time.time() - st}\nDone, fetching and preparing data...")
 
+###########################################################################
+## Fetch data
+tmp_mm_data, spikes = network.get_data()
+
+###########################################################################
+## Do some data preparation for plotting
+## Find out where to split
+index = np.insert(np.cumsum(network.get_nrec()), 0, 0)
+
+## Split spikes into subarrays per population
+tmp_sr_data = [network.prep_spikes(spikes)[index[i]:index[i+1]] for i in range(len(index)-1)]
+
+## Only save and load if we're using more than one worker
+if nest.NumProcesses() > 1:
+    with open(f"data/tmp_sr_{rank}", 'wb') as f:
+        pickle.dump(tmp_sr_data, f)
+        
+    with open(f"data/tmp_mm_{rank}", 'wb') as f:
+        pickle.dump(tmp_mm_data, f)
+
+
+## Wait until all processes have finished
+nest.SyncProcesses()
+if params['verbose'] and rank == 0:
+    print("Done. Processing data")
+
 ###############################################################################
 ## Data fetching and preparation
 if rank == 0:
+    ## If more than one process is used we need to take care of merging data
+    if nest.NumProcesses() > 1:
+        ## Merge different ranks back together
+        sr_filenames = [filename for filename in os.listdir('data/') if filename.startswith("tmp_sr_")]
+        mm_filenames = [filename for filename in os.listdir('data/') if filename.startswith("sim_data_multimeter")]
+        
+        rank_data_sr = []
+        rank_data_mm = []
+        
+        for fn in sr_filenames:
+            with open("data/"+fn, 'rb') as f:
+               rank_data_sr.append(pickle.load( f))
+        
+        def merge_spike_data(data_list):
+            num_ranks = len(data_list)
+            
+            ## Data from rank 0
+            for i in range(len(data_list[0])):
+                ## index of population
+                for j in range(len(data_list[0][i])):
+                    data_list[0][i][j] = data_list[j%num_ranks][i][j-(j%num_ranks)]
+            
+            return data_list[0]
+        
+        if params['verbose'] and rank == 0:
+            print(f"Time before V_m merge: {time.time() - st}")
+        ## Merge mm data
+        dataframes = []
+        for file_path in mm_filenames:
+            df = pd.read_csv("data/"+file_path, sep='\t', comment='#', header=3, names=["sender", "time", "V_m"])
+            dataframes.append(df)
+        
+        merged_dataframe = pd.concat(dataframes)
+        
+        # Sort the merged data by time
+        merged_dataframe.sort_values("time", inplace=True)
+        
+        if params['verbose'] and rank == 0:
+            print(f"Time after V_m merge: {time.time() - st}")
+    else:
+        spike_data = tmp_sr_data
+        mm_data = tmp_mm_data
+    
     ###########################################################################
     ## Create results dictionary
     results = {}
     
-    ###########################################################################
-    ## Fetch data
-    mmdata, spikes = network.get_data()
-    
-    ###########################################################################
-    ## Do some data preparation for plotting
-    ## Find out where to split
-    index = np.insert(np.cumsum(network.get_nrec()), 0, 0)
-    
-    ## Split spikes into subarrays per population
-    spike_data = [network.prep_spikes(spikes)[index[i]:index[i+1]] for i in range(len(index)-1)]
-    
     ## Check for silent populations
     run_borked = False
     for population, name in zip(spike_data, params['pop_name']):
+        print(len(population))
         ## Print the number of silent neurons
         silent_neurons = sum([1 if len(x) == 0 else 0 for x in population])
         print(f"Number of silent neurons in {name}: {silent_neurons}")
         if silent_neurons > 0:
             run_borked = True
-            results['ISI_mean'] = -1
-            results['ISI_std']  = -1
-            results['CV']       = -1
+            results['ISI_mean']    = -1
+            results['ISI_std']     = -1
+            results['CV']          = -1
+            results['firing_rate'] = -1
             with open("sim_results", 'wb') as f:
                 pickle.dump(results, f)
-            raise Exception("Run borked, silent neurons")
+            raise Exception(f"Run borked, silent neurons in rank {rank}")
             
     
     ## split vm into the two networks
-    mm_1, mm_2 = network.split_mmdata(mmdata)
+    mm_1, mm_2 = split_mmdata(mm_data, network.get_nrec())
     
     
     ###########################################################################
@@ -174,9 +234,9 @@ if rank == 0:
         
         #######################################################################
         ## Plot spike data
-        raster(spike_data[:2], vm_avg_1, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N1_", suffix=f"{str(int(params['th_in'])):0>4}")
-        raster(spike_data[2:], vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}")
-        raster(spike_data, np.average([vm_avg_1, vm_avg_2], axis=0), params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N3_", suffix=f"{str(int(params['th_in'])):0>4}")
+        # raster(spikes[:2], vm_avg_1, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N1_", suffix=f"{str(int(params['th_in'])):0>4}")
+        # raster(spikes[2:], vm_avg_2, params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N2_", suffix=f"{str(int(params['th_in'])):0>4}", pops_to_plot=[1,2])
+        raster(spikes, np.average([vm_avg_1, vm_avg_2], axis=0), params['rec_start'], params['rec_stop'], colors, network.get_nrec(), prefix="N3_", suffix=f"{str(int(params['th_in'])):0>4}")
 
         #######################################################################
         ## Display the average firing rate in Hz
@@ -323,10 +383,10 @@ if rank == 0:
     ISI_std  = [np.std(d) for d in ISI_data]
     ISI_CV   = [std / mean for std, mean in zip(ISI_std, ISI_mean)]
     
-    results['ISI_mean'] = ISI_mean
+    results['ISI_mean'] = np.array(ISI_mean)
     results['firing_rate'] = 1/(np.array(ISI_mean)/1000)
-    results['ISI_std']  = ISI_std
-    results['CV']       = ISI_CV
+    results['ISI_std']  = np.array(ISI_std)
+    results['CV']       = np.array(ISI_CV)
     
     ## Write to disk
     with open("sim_results", 'wb') as f:

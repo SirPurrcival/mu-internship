@@ -37,10 +37,15 @@ opt_results = {
 
 ## Change values and run the function with different parameters
 iteration = 1
-total_iter = len(range(19,31,1)) * len(np.arange(0.7, 1.3, 0.1))
 
-for tau_m in range(18,30,1):
-    for tau_syn_ex in np.arange(0.7, 1.4, 0.1):
+tau_m_range = range(5,21,1)
+tau_syn_ex_range = np.arange(1, 2.1, 0.1)
+
+
+total_iter = len(tau_m_range) * len(tau_syn_ex_range)
+
+for tau_m in tau_m_range:
+    for tau_syn_ex in tau_syn_ex_range:
         i = 0
         print(f"================= Iteration {iteration} of {total_iter} =================")
         print("Starting step...")
@@ -69,11 +74,13 @@ for tau_m in range(18,30,1):
         else:
             command = f"mpirun -n {n_workers} --verbose python3 run.py"
         
-        process = subprocess.Popen(command.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, ##stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        process = subprocess.Popen(command.split(), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, ##stdout=subprocess.PIPE, stderr=subprocess.PIPE, ##stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, 
                                    cwd=cwd, env=env)
         
         return_code = process.wait()
         print("Script exited with return code:", return_code)
+        
+        ## Uncomment if not using DEVNULL
         # output, error = process.communicate()
         # print("Standard output:\n", output.decode())
         # print("Error output:\n", error.decode())
@@ -95,7 +102,7 @@ for tau_m in range(18,30,1):
             
 ## Do analysis and figure stuff here
 
-def plot_heatmap(tau_m, tau_syn_ex, data, title):
+def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     ## Reshape data
     plot_pop = np.reshape(data, (len(tau_m), len(tau_syn_ex))).T
     
@@ -107,36 +114,50 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title):
     
     ## Plot
     fig, ax = plt.subplots()
-    ax.imshow(masked_data, cmap=cmap)
+    heatmap = ax.imshow(masked_data, cmap=cmap)
     ax.set_xticks(np.arange(len(tau_m)), tau_m)
-    ax.set_yticks(np.arange(len(tau_syn_ex)), np.round(tau_syn_ex, 2))
+    ax.set_yticks(np.arange(len(tau_syn_ex)), np.round(tau_syn_ex, 1))
+    
+    ## minor ticks
+    ax.set_xticks(np.arange(len(tau_m))-0.5, minor=True)
+    ax.set_yticks(np.arange(len(tau_syn_ex))-0.5, minor=True)
+    
+    ## Add gridlines
+    ax.grid(which='minor', color='black', linestyle='--', linewidth=1)
     
     ## Add values in white to the plot
     for i in range(len(tau_m)):
         for j in range(len(tau_syn_ex)):
-            ax.text(i, j, round(plot_pop[j, i], 1),
-                           ha="center", va="center", color="w")
+            ax.text(i, j, round(plot_pop[j, i], round_to) if round_to >= 1 else int(plot_pop[j, i]),
+                           ha="center", va="center", color="black", fontsize=8)
     
     ## General settings
     ax.set_title(title, fontsize=22)
+    
+    # Remove minor ticks
+    ax.tick_params(which='minor', bottom=False, left=False)
+    
     plt.xlabel(r"$\tau_{m}$", fontsize=18)
     plt.ylabel(r"$\tau_{syn-ex}$", fontsize=18)
+    
+    plt.colorbar(heatmap)
+    
     fig.tight_layout()
     plt.savefig(f"simresults/{title}.png")
     plt.show()
+    
 
 ## Axis data
 tau_m_data      = np.unique(opt_results['tau_m'])
 tau_syn_ex_data = np.unique(opt_results['tau_syn_ex'])
 
 ## Get data for population 1
-CV_data   = [x[0] if type(x) == list else x for x in opt_results['CV']]
-mean_data = [x[0] if type(x) == list else x for x in opt_results['mean']]
-std_data  = [x[0] if type(x) == list else x for x in opt_results['stdev']]
-fr_data   = [x[0] if type(x) == list else x for x in opt_results['firing_rate']]
-
+CV_data   = [x[0] if type(x) == np.ndarray else x for x in opt_results['CV']]
+mean_data = [x[0] if type(x) == np.ndarray else x for x in opt_results['mean']]
+std_data  = [x[0] if type(x) == np.ndarray else x for x in opt_results['stdev']]
+fr_data   = [x[0] if type(x) == np.ndarray else x for x in opt_results['firing_rate']]
 ## Plot heatmaps
-plot_heatmap(tau_m_data, tau_syn_ex_data, CV_data, "Coefficient of variation")
+plot_heatmap(tau_m_data, tau_syn_ex_data, CV_data, "Coefficient of variation", round_to = 1)
 plot_heatmap(tau_m_data, tau_syn_ex_data, mean_data, "Mean")
 plot_heatmap(tau_m_data, tau_syn_ex_data, std_data, "Standard Deviation")
 plot_heatmap(tau_m_data, tau_syn_ex_data, fr_data, "Firing rate")

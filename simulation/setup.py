@@ -17,9 +17,9 @@ def setup():
     ## Recording and simulation parameters
     params = {
         'rec_start'  :    200.,                                                # start point for data recording
-        'rec_stop'   :   2000.,                                                # end points for data recording
+        'rec_stop'   :  2000.,                                                # end points for data recording
         'record_to'  :'memory',
-        'sim_time'   :   2000.,                                                # Time the network is simulated in ms
+        'sim_time'   :  2000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -40,7 +40,7 @@ def setup():
                             'V_reset'    :  -70.,
                             'C_m'        :  250.,
                             't_ref'      :    2.,
-                            'tau_syn_ex' :   0.7,
+                            'tau_syn_ex' :   1.0,
                             'tau_syn_in' :   .25,
                             'E_L'        : -65.0,
                             'tau_m'      :  27.0,
@@ -82,7 +82,8 @@ def setup():
         
         'pop_name'   : ['L1_E', 'L1_I',
                         'L2_E' , 'L2_I'],
-        'connection_strength': 0.0
+        'interlaminar_connections': [0.0, 0.0],
+        'intercircuit_connections': 0.0
         }
     ## AI Regime
     # {
@@ -177,7 +178,7 @@ def setup():
                                    ["I", "I", "I", "I"]])
     
     
-    syn_strength = 8
+    syn_strength = 80
     ## Synaptic strength
     params['syn_strength'] = np.array([
                                     [syn_strength]*4,
@@ -190,10 +191,10 @@ def setup():
     ## Background stimulation parameters ##
     #######################################
 
-    params['ext_rate'] = 25.0
+    params['ext_rate'] = 35.0
     params['ext_nodes']   = np.array(
-        [1000, 1000, 
-         1000, 1000])
+        [100, 100, 
+         100, 100])
     
     weight = syn_strength
     

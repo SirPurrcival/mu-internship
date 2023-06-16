@@ -319,22 +319,23 @@ class Network:
         
         return data
     
-    def split_mmdata(self, mmdata):
-        sender = np.array(mmdata['sender'])
-        dict_1 = {key: [] for key in mmdata}
-        dict_2 = {key: [] for key in mmdata}
-        
-        ## split by values
-        min_sender = min(np.unique(sender))
-        
-        mask_1 = np.where((sender >= min_sender) & (sender <= min_sender+sum(self.nrec[:2])))
-        mask_2 = np.where((sender > min_sender+sum(self.nrec[:2])) & (sender <= min_sender+sum(self.nrec[:4])))
-        
-        for key in mmdata:
-            dict_1[key] = np.array(mmdata[key])[mask_1]
-            dict_2[key] = np.array(mmdata[key])[mask_2]
-        
-        return dict_1, dict_2
+## TODO: Extend
+def split_mmdata(mmdata, nrec):
+    sender = np.array(mmdata['sender'])
+    dict_1 = {key: [] for key in mmdata}
+    dict_2 = {key: [] for key in mmdata}
+    
+    ## split by values
+    min_sender = min(np.unique(sender))
+    
+    mask_1 = np.where((sender >= min_sender) & (sender <= min_sender+sum(nrec[:2])))
+    mask_2 = np.where((sender > min_sender+sum(nrec[:2])) & (sender <= min_sender+sum(nrec[:4])))
+    
+    for key in mmdata:
+        dict_1[key] = np.array(mmdata[key])[mask_1]
+        dict_2[key] = np.array(mmdata[key])[mask_2]
+    
+    return dict_1, dict_2
     
 
 # Helper functions
@@ -361,17 +362,7 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, prefix="", suffix
     None.
 
     """
-    #spikes_total = list(itertools.chain(*spikes))
-    
     print("Start graph")
-    
-    # An array containing all the arrays for each neuron
-    spikes_total = [element for sublist in spikes for element in sublist]
-    nrec_lst = []
-
-    ## Get the size of each population
-    for i in spikes:
-        nrec_lst.append(len(i))
         
     fig = plt.figure(figsize=figsize)
     gs = fig.add_gridspec(4, 2)
@@ -384,7 +375,7 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, prefix="", suffix
     ax2.set_xlim([rec_start, rec_stop])
     ax3.set_xlim([rec_start, rec_stop])
     
-    ax1.set_ylim([0, sum(nrec_lst)])
+    ax1.set_ylim([0, sum(nrec)])
     ax1.set_ylabel('Neuron ID')
     ax1.invert_yaxis()
     
@@ -394,27 +385,33 @@ def raster(spikes, vm_data, rec_start, rec_stop, colors, nrec, prefix="", suffix
     ax3.set_ylabel('V_m')
     ax3.set_xlabel('Time [ms]')
 
-    for j in range(len(nrec_lst)): ## for each population
-        for i in range(nrec_lst[j]): ## Get the size of the population
-            ax1.plot(spikes_total[(i+ sum(nrec_lst[:j]))],
-                (i + sum(nrec_lst[:j]))*np.ones(len(spikes_total[i+ sum(nrec_lst[:j])])),
-                linestyle='',
-                marker='o',
-                color=colors[j],
-                markersize=1)
-    
-    spikes_hist = list(itertools.chain(*[element for sublist in spikes for element in sublist]))
-    ax2 = ax2.hist(spikes_hist,
+    ## Replace with this:
+    ## plt.plot(spikes['time_ms'][np.where(spikes['sender'] > 400)], spikes['sender'][np.where(spikes['sender']>400)], marker='o', markersize=0.1, linestyle='')
+    ## and use spikes instead of spike_datafor much faster plotting
+    pop_indices = np.insert(np.cumsum(nrec), 0, 0)
+    pop_min = min(spikes['sender'])
+    for i in range(len(nrec)):
+        sender_range = (spikes['sender'] >= pop_min + pop_indices[i]) & (spikes['sender'] <= pop_min + pop_indices[i+1])
+        ax1.plot(spikes['time_ms'][np.where(sender_range)], 
+                 spikes['sender'][np.where(sender_range)],
+                 linestyle='',
+                 marker='o',
+                 color=colors[i],
+                 markersize=1)
+
+    print("start hist")
+    ax2 = ax2.hist(spikes['time_ms'],
                    range=(rec_start,rec_stop),
                    bins=int(rec_stop - rec_start))
     
+    print("hist done, start vm plot")
     x_values = np.arange(rec_start + 0.1, rec_stop, 0.1)
     ax3 = ax3.plot(x_values, vm_data)
     
     plt.tight_layout(pad=1)
 
     plt.savefig(f"simresults/{prefix}raster_{suffix}.png")
-    
+    print("done")
     plt.show()
     
 def create_spectrogram(data, fs, t_start, t_end, f_min, f_max):
