@@ -112,48 +112,24 @@ def setup():
         'second_net' :   False,
         'num_neurons': np.array([400, 100, 400, 100]),
         'cell_params'  : [{
-                            'V_m'        :  -70.,
-                            'V_th'       :  -50.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   1.4,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  14.0,
+                            'tau_syn_ex' :   2.0,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  25.0
                         },
                         {
-                            'V_m'        :  -70.,
-                            'V_th'       :  -49.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   0.9,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  23.0,
+                            'tau_syn_ex' :    1.,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  23.0
                         },
                          {
-                            'V_m'        :  -70.,
-                            'V_th'       :  -50.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   1.3,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  13.0,
+                            'tau_syn_ex' :   1.8,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  17.0
                         },
                         {
-                            'V_m'        :  -70.,
-                            'V_th'       :  -49.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   0.9,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  23.0,
+                            'tau_syn_ex' :    1.,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  23.0
                         }],
         
         'pop_name'   : ['L1_E', 'L1_I',
@@ -177,75 +153,6 @@ def setup():
                  [0.1          , 0.1         , 0.1         , 0.1         ]] ## Net2_I2
                 )
         }
-    ## AI Regime
-    # {
-    #                       'V_m'        :  -70.,
-    #                       'V_th'       :  -50.,
-    #                       'V_reset'    :  -76.,
-    #                       'C_m'        :  250.,
-    #                       't_ref'      :    3.,
-    #                       'tau_syn_ex' :     1,
-    #                       'tau_syn_in' :     1,
-    #                       'E_L'        : -65.0,
-    #                       'tau_m'      :  20.0,
-    #                   },
-    #                   {
-    #                       'V_m'        :  -70.,
-    #                       'V_th'       :  -49.,
-    #                       'V_reset'    :  -76.,
-    #                       'C_m'        :  250.,
-    #                       't_ref'      :    4.,
-    #                       'tau_syn_ex' :     1,
-    #                       'tau_syn_in' :     1,
-    #                       'E_L'        : -65.0,
-    #                       'tau_m'      :  20.0,
-    #                   },
-    ###########################################################################
-    ## Gamma/Beta Oscillations
-    # [{
-    #                     'V_m'        :  -70.,
-    #                     'V_th'       :  -50.,
-    #                     'V_reset'    :  -70.,
-    #                     'C_m'        :  250.,
-    #                     't_ref'      :    2.,
-    #                     'tau_syn_ex' :   0.95,
-    #                     'tau_syn_in' :   .25,
-    #                     'E_L'        : -65.0,
-    #                     'tau_m'      :  27.0,
-    #                 },
-    #                 {
-    #                     'V_m'        :  -70.,
-    #                     'V_th'       :  -49.,
-    #                     'V_reset'    :  -70.,
-    #                     'C_m'        :  250.,
-    #                     't_ref'      :    2.,
-    #                     'tau_syn_ex' :   0.9,
-    #                     'tau_syn_in' :    .25,
-    #                     'E_L'        : -65.0,
-    #                     'tau_m'      :  23.0,
-    #                 },
-    #                  {
-    #                     'V_m'        :  -70.,
-    #                     'V_th'       :  -50.,
-    #                     'V_reset'    :  -70.,
-    #                     'C_m'        :  250.,
-    #                     't_ref'      :    2.,
-    #                     'tau_syn_ex' :   1.3,
-    #                     'tau_syn_in' :   .25,
-    #                     'E_L'        : -65.0,
-    #                     'tau_m'      :  28.0,
-    #                 },
-    #                 {
-    #                     'V_m'        :  -70.,
-    #                     'V_th'       :  -49.,
-    #                     'V_reset'    :  -70.,
-    #                     'C_m'        :  250.,
-    #                     't_ref'      :    2.,
-    #                     'tau_syn_ex' :   1.3,
-    #                     'tau_syn_in' :   .5,
-    #                     'E_L'        : -65.0,
-    #                     'tau_m'      :  24.0,
-    #                 }]
     
     ################################################################
     ## Specify connectivity in and between layers and populations ##
@@ -286,10 +193,10 @@ def setup():
     ## Background stimulation parameters ##
     #######################################
 
-    params['ext_rate'] = 35.0
+    params['ext_rate'] = 30.0
     params['ext_nodes']   = np.array(
-        [100, 100, 
-         100, 100])
+        [100, 0, 
+         100, 0])
     
     weight = syn_strength
     

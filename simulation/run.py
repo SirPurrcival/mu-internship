@@ -400,15 +400,15 @@ if rank == 0:
     for data in net1_spike_data:
         outcomes.append(analyze_spike_trains(data))
     
-    if not params['opt_run']:
-        import matplotlib.pyplot as plt
-        for outcome in outcomes:
-            for item in outcome['band powers'].values():
-                plt.plot(item)
-            plt.legend(outcome['band powers'].keys())
-            plt.show()
-        if params['verbose'] and rank == 0:
-            print(f"Done. Final time: {time.time() - st}")
+    # if not params['opt_run']:
+    #     import matplotlib.pyplot as plt
+    #     for outcome in outcomes:
+    #         for item in outcome['band powers'].values():
+    #             plt.plot(item)
+    #         plt.legend(outcome['band powers'].keys())
+    #         plt.show()
+    #     if params['verbose'] and rank == 0:
+    #         print(f"Done. Final time: {time.time() - st}")
     
     ###########################################################################
     ## Calculate measures 

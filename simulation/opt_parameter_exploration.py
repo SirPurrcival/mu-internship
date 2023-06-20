@@ -38,8 +38,8 @@ opt_results = {
 ## Change values and run the function with different parameters
 iteration = 1
 
-tau_m_range = range(5,21,1)
-tau_syn_ex_range = np.arange(1, 2.1, 0.1)
+tau_m_range = range(10,26,1)
+tau_syn_ex_range = np.arange(1.5, 2.6, 0.1)
 
 
 total_iter = len(tau_m_range) * len(tau_syn_ex_range)
