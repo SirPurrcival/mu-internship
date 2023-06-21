@@ -150,7 +150,7 @@ class Network:
                 
             weight = nest.math.redraw(nest.random.normal(
                 mean = syn_specs[source,target],
-                std=max(abs(syn_specs[source,target]*0.1), 1e-10)),
+                std=0.1),
                 min=w_min,
                 max=w_max)
             delay = nest.math.redraw(nest.random.normal(

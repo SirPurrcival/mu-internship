@@ -10,8 +10,8 @@ import pandas as pd
 import os
 
 ## Disable this if you run any kind of opt_ script
-# from setup import setup
-# setup()
+from setup import setup
+setup()
 
 ###############################################################################
 ## Load config created by setup().

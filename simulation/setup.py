@@ -17,9 +17,9 @@ def setup():
     ## General parameters
     settings  = {
         'rec_start'  :    200.,                                                # start point for data recording
-        'rec_stop'   :   2000.,                                                # end points for data recording
+        'rec_stop'   :   1000.,                                                # end points for data recording
         'record_to'  :'memory',
-        'sim_time'   :   2000.,                                                # Time the network is simulated in ms
+        'sim_time'   :   1000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -40,48 +40,24 @@ def setup():
         'th_stop'    :    510.,
         'num_neurons': np.array([400, 100, 400, 100]),
         'cell_params'  : [{
-                            'V_m'        :  -70.,
-                            'V_th'       :  -50.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
                             'tau_syn_ex' :   1.4,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  14.0,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  19.0
                         },
                         {
-                            'V_m'        :  -70.,
-                            'V_th'       :  -49.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   0.9,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  23.0,
+                            'tau_syn_ex' :    1.,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  19.0
                         },
                          {
-                            'V_m'        :  -70.,
-                            'V_th'       :  -50.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   1.3,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  13.0,
+                            'tau_syn_ex' :   1.1,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  13.0
                         },
                         {
-                            'V_m'        :  -70.,
-                            'V_th'       :  -49.,
-                            'V_reset'    :  -70.,
-                            'C_m'        :  250.,
-                            't_ref'      :    2.,
-                            'tau_syn_ex' :   0.9,
-                            'tau_syn_in' :   .25,
-                            'E_L'        : -65.0,
-                            'tau_m'      :  23.0,
+                            'tau_syn_ex' :    1.,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  15.0
                         }],
         
         'pop_name'   : ['L1_E', 'L1_I',
@@ -112,24 +88,24 @@ def setup():
         'second_net' :   False,
         'num_neurons': np.array([400, 100, 400, 100]),
         'cell_params'  : [{
-                            'tau_syn_ex' :   2.0,
+                            'tau_syn_ex' :   1.2,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  14.0
+                        },
+                        {
+                            'tau_syn_ex' :   0.5,
                             'tau_syn_in' :   0.5,
                             'tau_m'      :  25.0
                         },
-                        {
-                            'tau_syn_ex' :    1.,
-                            'tau_syn_in' :   0.5,
-                            'tau_m'      :  23.0
-                        },
                          {
-                            'tau_syn_ex' :   1.8,
+                            'tau_syn_ex' :   1.1,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  17.0
+                            'tau_m'      :  14.0
                         },
                         {
-                            'tau_syn_ex' :    1.,
+                            'tau_syn_ex' :   0.5,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  23.0
+                            'tau_m'      :  25.0
                         }],
         
         'pop_name'   : ['L1_E', 'L1_I',
@@ -195,8 +171,8 @@ def setup():
 
     params['ext_rate'] = 30.0
     params['ext_nodes']   = np.array(
-        [100, 0, 
-         100, 0])
+        [100, 60, 
+         100, 60])
     
     weight = syn_strength
     
