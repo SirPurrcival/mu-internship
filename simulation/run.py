@@ -130,11 +130,11 @@ if params['verbose'] and rank == 0:
 
 ###########################################################################
 ## Fetch data
-net1_tmp_mm_data, net1_spikes = network1.get_data()
+net1_mm_data, net1_spikes = network1.get_data()
 net1_nrec = network1.get_nrec()
 
 if second_net:
-    net2_tmp_mm_data, net2_spikes = network2.get_data()
+    net2_mm_data, net2_spikes = network2.get_data()
     net2_nrec = network2.get_nrec()
 
 ###########################################################################
@@ -145,25 +145,19 @@ net1_indices = np.insert(np.cumsum(net1_nrec), 0, 0)
 if second_net:
     net2_indices = np.insert(np.cumsum(net2_nrec), 0, 0)
 
-## Split spikes into subarrays per population
-net1_tmp_sr_data = [network1.prep_spikes(net1_spikes)[net1_indices[i]:net1_indices[i+1]] for i in range(len(net1_indices)-1)]
-
-if second_net:
-    net2_tmp_sr_data = [network2.prep_spikes(net2_spikes)[net2_indices[i]:net2_indices[i+1]] for i in range(len(net2_indices)-1)]
-
-## Only save and load if we're using more than one worker
-if nest.NumProcesses() > 1:
-    with open(f"data/net1_tmp_sr_{rank}", 'wb') as f:
-        pickle.dump(net1_tmp_sr_data, f)
+## Only save and load if we're using more than one worker and recorded to memory
+if nest.NumProcesses() > 1 and params['record_to'] == 'memory':
+    with open(f"data/net1_spikes_{rank}", 'wb') as f:
+        pickle.dump(net1_spikes, f)
         
-    with open(f"data/net1_tmp_mm_{rank}", 'wb') as f:
-        pickle.dump(net1_tmp_mm_data, f)
+    with open(f"data/net1_mm_{rank}", 'wb') as f:
+        pickle.dump(net1_mm_data, f)
     if second_net:
-        with open(f"data/net2_tmp_sr_{rank}", 'wb') as f:
-            pickle.dump(net2_tmp_sr_data, f)
+        with open(f"data/net2_spikes_{rank}", 'wb') as f:
+            pickle.dump(net2_spikes, f)
             
-        with open(f"data/net2_tmp_mm_{rank}", 'wb') as f:
-            pickle.dump(net2_tmp_mm_data, f)
+        with open(f"data/net2_mm_{rank}", 'wb') as f:
+            pickle.dump(net2_mm_data, f)
 
 
 ## Wait until all processes have finished
@@ -176,50 +170,40 @@ if params['verbose'] and rank == 0:
 if rank == 0:
     ## If more than one process is used we need to take care of merging data
     if nest.NumProcesses() > 1:
-        ## Merge different ranks back together
-        sr_filenames = [filename for filename in os.listdir('data/') if filename.startswith("tmp_sr_")]
-        mm_filenames = [filename for filename in os.listdir('data/') if filename.startswith("sim_data_multimeter")]
-        
-        rank_data_sr = []
-        rank_data_mm = []
-        
-        for fn in sr_filenames:
-            with open("data/"+fn, 'rb') as f:
-               rank_data_sr.append(pickle.load( f))
-        
-        def merge_spike_data(data_list):
-            num_ranks = len(data_list)
+        if params['record_to'] != 'memory':
+            ## Merge different ranks back together
+            sr_filenames = [filename for filename in os.listdir('data/') if filename.startswith("sim_data_spike_recorder")]
+            mm_filenames = [filename for filename in os.listdir('data/') if filename.startswith("sim_data_multimeter")]
             
-            ## Data from rank 0
-            for i in range(len(data_list[0])):
-                ## index of population
-                for j in range(len(data_list[0][i])):
-                    data_list[0][i][j] = data_list[j%num_ranks][i][j-(j%num_ranks)]
+            rank_data_sr = [pickle.load(open("data/"+fn, 'rb')) for fn in sr_filenames]
+            rank_data_mm = [pickle.load(open("data/"+fn, 'rb')) for fn in mm_filenames]
+                   
+        
+            if params['verbose'] and rank == 0:
+                print(f"Time before V_m merge: {time.time() - st}")
+                
+            sr_data = [pd.read_csv("data/"+file_path, sep='\t', comment='#', header=3, names=["sender", "time", "V_m"]) for file_path in mm_filenames]
+            mm_data = [pd.read_csv("data/"+file_path, sep='\t', comment='#', header=3, names=["sender", "time"]) for file_path in sr_filenames]
             
-            return data_list[0]
+            merged_mm = pd.concat(mm_data)
+            merged_sr = pd.concat(sr_data)
+            
+            # Sort the merged data by time
+            net1_spikes.sort_values("time", inplace=True)
+            merged_sr.sort_values("time", inplace=True)
         
-        if params['verbose'] and rank == 0:
-            print(f"Time before V_m merge: {time.time() - st}")
-        ## Merge mm data
-        dataframes = []
-        for file_path in mm_filenames:
-            df = pd.read_csv("data/"+file_path, sep='\t', comment='#', header=3, names=["sender", "time", "V_m"])
-            dataframes.append(df)
-        
-        merged_dataframe = pd.concat(dataframes)
-        
-        # Sort the merged data by time
-        merged_dataframe.sort_values("time", inplace=True)
-        
-        if params['verbose'] and rank == 0:
-            print(f"Time after V_m merge: {time.time() - st}")
+            if params['verbose'] and rank == 0:
+                print(f"Time after V_m merge: {time.time() - st}")
+        else:
+            pass
     else:
-        net1_spike_data = net1_tmp_sr_data
-        net1_mm_data = net1_tmp_mm_data
-        
-        if second_net:
-            net2_spike_data = net2_tmp_sr_data
-            net2_mm_data = net2_tmp_mm_data
+        pass
+            
+    ## Split spikes into subarrays per population
+    net1_spike_data = [network1.prep_spikes(net1_spikes)[net1_indices[i]:net1_indices[i+1]] for i in range(len(net1_indices)-1)]
+
+    if second_net:
+        net2_spike_data = [network2.prep_spikes(net2_spikes)[net2_indices[i]:net2_indices[i+1]] for i in range(len(net2_indices)-1)]
     
     ###########################################################################
     ## Create results dictionary
@@ -431,7 +415,11 @@ if rank == 0:
     net1_ISI_std  = [np.std(d) for d in net1_ISI_data]
     net1_ISI_CV   = [std / mean for std, mean in zip(net1_ISI_std, net1_ISI_mean)]
     
-    plv = compute_plv(net1_spike_data[0], net1_spike_data[2], params['rec_start'], params['rec_stop'], bin_width=3)
+    ## 
+    spk_upper = np.sort(np.concatenate(net1_spike_data[0]))
+    spk_lower = np.sort(np.concatenate(net1_spike_data[2]))
+    
+    plv = compute_plv(spk_upper, spk_lower, params['resolution'], (params['rec_stop']-params['rec_start']), bin_size=3)
     print("Phase-Locking Value (PLV):", plv)
 
     results['PLV']         = plv

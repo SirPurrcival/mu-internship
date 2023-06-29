@@ -3,7 +3,7 @@ import numpy as np
 import nest
 import itertools
 import random
-from scipy.signal import hilbert
+from scipy.signal import butter, filtfilt, hilbert, find_peaks
 
 ## 
 # Create classes
@@ -17,6 +17,7 @@ class Network:
         self.resolution = p['resolution']
         self.opt = p['opt_run']
         self.g = p['g']
+        self.sd = p['sd']
         self.record_to = p['record_to']
         
         #######################################################################
@@ -150,7 +151,7 @@ class Network:
                 
             weight = nest.math.redraw(nest.random.normal(
                 mean = syn_specs[source,target],
-                std=0.1),
+                std=abs(syn_specs[source,target]) * self.sd),
                 min=w_min,
                 max=w_max)
             delay = nest.math.redraw(nest.random.normal(
@@ -720,23 +721,41 @@ def get_mean_spike_rate(times, params):
     times = times[times >= params['transient']]
     return times.size /  (params['sim_time'] - params['transient']) * 1000
 
-def compute_plv(spike_trains_1, spike_trains_2, rec_start, rec_stop, bin_width):
-    # Step 1: Determine the number of bins based on recording duration and bin width
-    num_bins = int((rec_stop - rec_start) / bin_width) + 1
-    time_bins = np.linspace(rec_start, rec_stop, num=num_bins)
+def compute_plv(spikes_1, spikes_2, resolution, t_sim, bin_size):
+    # Phase using the Hilbert Transform
+    Fn = 1000 / resolution  # sampling frequency
+    Fbp = [15, 60]  # bandpass filter
+
+    # Create spike histograms with the specified bin size
+    hist1, _ = np.histogram(spikes_1, bins=np.arange(0, t_sim, bin_size))
+    hist2, _ = np.histogram(spikes_2, bins=np.arange(0, t_sim, bin_size))
+
+    plt.plot(hist1)
+    plt.plot(hist2)
+
+    # Apply bandpass filter and Hilbert transform to obtain analytic signals
+    B, A = butter(4, np.array([np.min(Fbp) / Fn, np.max(Fbp) / Fn]), btype='bandpass')
+    signal1 = filtfilt(B, A, hist1)
+    signal1 = hilbert(signal1)
+
+    signal2 = filtfilt(B, A, hist2)
+    signal2 = hilbert(signal2)
+
+    # Calculate the phases of the analytic signals
+    phase1 = np.angle(signal1)
+    phase2 = np.angle(signal2)
     
-    # Step 2: Preprocess spike train data
-    spike_counts_1 = [np.histogram(train, bins=time_bins)[0] for train in spike_trains_1]
-    spike_counts_2 = [np.histogram(train, bins=time_bins)[0] for train in spike_trains_2]
+    plv = np.abs(np.mean(np.exp(-1j*(phase1-phase2))))
     
-    # Step 3: Extract phase information
-    phase_1 = [np.angle(hilbert(counts)) for counts in spike_counts_1]
-    phase_2 = [np.angle(hilbert(counts)) for counts in spike_counts_2]
+    # # Calculate the complex-valued signals
+    # signal_1 = np.exp(1j * phase1)
+    # signal_2 = np.exp(1j * phase2)
     
-    # Step 4: Compute phase difference
-    phase_diff = [p1 - p2 for p1, p2 in zip(phase_1, phase_2)]
-    
-    # Step 5: Compute PLV
-    plv = abs(np.mean(np.exp(1j * np.concatenate(phase_diff))))
-    
+    # ## Compute phase difference
+    # phase_diff = np.angle(signal_1 / signal_2)
+
+    # # Compute the phase locking value
+    # plv = np.abs(np.mean(np.exp(1j * phase_diff)))
+
     return plv
+

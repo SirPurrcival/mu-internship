@@ -13,12 +13,11 @@ def setup():
     #######################################
     ## Set parameters for the simulation ##
     #######################################
-    
-    ## General parameters
-    settings  = {
+    ## Recording and simulation parameters
+    params = {
         'rec_start'  :    200.,                                                # start point for data recording
         'rec_stop'   :   1000.,                                                # end points for data recording
-        'record_to'  :'memory',
+        'record_to'  : 'memory',
         'sim_time'   :   1000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
@@ -30,63 +29,12 @@ def setup():
         'g'          :     -4.,                                                # Excitation-Inhibition balance
         'resolution' :     0.1,                                                # Resolution of the simulaton
         'transient'  :     200,                                                # Ignore the first x ms of the simulation
-        'second_net' :   False
-        }
-    
-    ## Parameters for network 1
-    net1_dict = {
         'th_in'      :      0.,                                                # Thalamic input in Hz
         'th_start'   :    500.,
         'th_stop'    :    510.,
+        'second_net' :    False,
         'num_neurons': np.array([400, 100, 400, 100]),
-        'cell_params'  : [{
-                            'tau_syn_ex' :   1.4,
-                            'tau_syn_in' :   0.5,
-                            'tau_m'      :  19.0
-                        },
-                        {
-                            'tau_syn_ex' :    1.,
-                            'tau_syn_in' :   0.5,
-                            'tau_m'      :  19.0
-                        },
-                         {
-                            'tau_syn_ex' :   1.1,
-                            'tau_syn_in' :   0.5,
-                            'tau_m'      :  13.0
-                        },
-                        {
-                            'tau_syn_ex' :    1.,
-                            'tau_syn_in' :   0.5,
-                            'tau_m'      :  15.0
-                        }],
-        
-        'pop_name'   : ['L1_E', 'L1_I',
-                        'L2_E' , 'L2_I'],
-        }
-    
-    ## Parameters for network 2
-    net2_dict = net1_dict
-    ## Recording and simulation parameters
-    params = {
-        'rec_start'  :    200.,                                                # start point for data recording
-        'rec_stop'   :   2000.,                                                # end points for data recording
-        'record_to'  :'memory',
-        'sim_time'   :   2000.,                                                # Time the network is simulated in ms
-        'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
-        'verbose'    :    True,                                                # Flag for verbose function output
-        'K_scale'    :      1.,                                                # Scaling factor for connections
-        'syn_scale'  :      1.,                                                # Scaling factor for synaptic strenghts
-        'N_scale'    :      1.,                                                # Scaling factor for the number of neurons
-        'R_scale'    :      1.,                                                # Fraction of neurons to be recorded from
-        'opt_run'    :   False,                                                # Flag for optimizer run, run minimal settings
-        'g'          :     -4.,                                                # Excitation-Inhibition balance
-        'resolution' :     0.1,                                                # Resolution of the simulaton
-        'transient'  :     200,                                                # Ignore the first x ms of the simulation
-        'th_in'      :      0.,                                                # Thalamic input in Hz
-        'th_start'   :    500.,
-        'th_stop'    :    510.,
-        'second_net' :   False,
-        'num_neurons': np.array([400, 100, 400, 100]),
+        'sd'         :  0.1,
         'cell_params'  : [{
                             'tau_syn_ex' :   1.2,
                             'tau_syn_in' :   0.5,
@@ -95,23 +43,23 @@ def setup():
                         {
                             'tau_syn_ex' :   0.5,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  25.0
+                            'tau_m'      :  20.0
                         },
                          {
-                            'tau_syn_ex' :   1.1,
+                            'tau_syn_ex' :   1.0,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  14.0
+                            'tau_m'      :  13.0
                         },
                         {
                             'tau_syn_ex' :   0.5,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  25.0
+                            'tau_m'      :  20.0
                         }],
         
         'pop_name'   : ['L1_E', 'L1_I',
                         'L2_E' , 'L2_I'],
         'interlaminar_connections': 0.0,
-        'E/I ratio'               :  4., 
+        'E/I ratio'               :  1., 
         'net1_net2_connections': np.array(
             ##            Target
             ##    Net2_E1        Net2_I1       Net2_E2       Net2_I2 
@@ -140,9 +88,9 @@ def setup():
     params['connectivity'] = np.array(
         ##            Target
         ##    E1              I1                E2           I2 
-            [[0.1          , 0.25        , k*(1-(1/ei)), k*(1-(1/ei))], ## E1
+            [[0.1          , 0.25         , k*(1-(1/ei)), k*(1-(1/ei))], ## E1
              [0.5          , 0.25        , k*(1/ei)    , k*(1/ei)    ], ## I1   Source
-             [k*(1-(1/ei)) , k*(1-(1/ei)), 0.1         , 0.25        ], ## E2
+             [k*(1-(1/ei)) , k*(1-(1/ei)), 0.1         , 0.25         ], ## E2
              [k*(1/ei)     , k*(1/ei)    , 0.5         , 0.25        ]] ## I2
             )
     
@@ -171,8 +119,8 @@ def setup():
 
     params['ext_rate'] = 30.0
     params['ext_nodes']   = np.array(
-        [100, 60, 
-         100, 60])
+        [100, 20, 
+         100, 20])
     
     weight = syn_strength
     
