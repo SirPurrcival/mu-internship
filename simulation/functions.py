@@ -721,17 +721,15 @@ def get_mean_spike_rate(times, params):
     times = times[times >= params['transient']]
     return times.size /  (params['sim_time'] - params['transient']) * 1000
 
-def compute_plv(spikes_1, spikes_2, resolution, t_sim, bin_size):
+def compute_plv(spikes_1, spikes_2, resolution, t_sim, bin_size, transient):
     # Phase using the Hilbert Transform
     Fn = 1000 / resolution  # sampling frequency
     Fbp = [15, 60]  # bandpass filter
 
     # Create spike histograms with the specified bin size
-    hist1, _ = np.histogram(spikes_1, bins=np.arange(0, t_sim, bin_size))
-    hist2, _ = np.histogram(spikes_2, bins=np.arange(0, t_sim, bin_size))
+    hist1, _ = np.histogram(spikes_1-200, bins=np.arange(0, t_sim, bin_size))
+    hist2, _ = np.histogram(spikes_2-200, bins=np.arange(0, t_sim, bin_size))
 
-    plt.plot(hist1)
-    plt.plot(hist2)
 
     # Apply bandpass filter and Hilbert transform to obtain analytic signals
     B, A = butter(4, np.array([np.min(Fbp) / Fn, np.max(Fbp) / Fn]), btype='bandpass')
@@ -740,6 +738,9 @@ def compute_plv(spikes_1, spikes_2, resolution, t_sim, bin_size):
 
     signal2 = filtfilt(B, A, hist2)
     signal2 = hilbert(signal2)
+
+    plt.plot(signal1)
+    plt.plot(signal2)
 
     # Calculate the phases of the analytic signals
     phase1 = np.angle(signal1)

@@ -14,7 +14,7 @@ from setup import setup
 setup()
 
 ###############################################################################
-## Load config created by setup().
+## Load config created by setup()
 ## It is done this way for optimization procedures that change parameter values
 with open("params", 'rb') as f:
    params = pickle.load( f)
@@ -419,7 +419,7 @@ if rank == 0:
     spk_upper = np.sort(np.concatenate(net1_spike_data[0]))
     spk_lower = np.sort(np.concatenate(net1_spike_data[2]))
     
-    plv = compute_plv(spk_upper, spk_lower, params['resolution'], (params['rec_stop']-params['rec_start']), bin_size=3)
+    plv = compute_plv(spk_upper, spk_lower, params['resolution'], (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
     print("Phase-Locking Value (PLV):", plv)
 
     results['PLV']         = plv

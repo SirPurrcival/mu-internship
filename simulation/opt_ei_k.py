@@ -147,8 +147,8 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     # Remove minor ticks
     ax.tick_params(which='minor', bottom=False, left=False)
     
-    plt.xlabel(r"$\tau_{m}$", fontsize=18)
-    plt.ylabel(r"$\tau_{syn-ex}$", fontsize=18)
+    plt.xlabel(r"E/I Ratio", fontsize=18)
+    plt.ylabel("Interlaminar connections", fontsize=18)
     
     plt.colorbar(heatmap)
     

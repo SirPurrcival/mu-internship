@@ -16,9 +16,9 @@ def setup():
     ## Recording and simulation parameters
     params = {
         'rec_start'  :    200.,                                                # start point for data recording
-        'rec_stop'   :   1000.,                                                # end points for data recording
+        'rec_stop'   :   4000.,                                                # end points for data recording
         'record_to'  : 'memory',
-        'sim_time'   :   1000.,                                                # Time the network is simulated in ms
+        'sim_time'   :   4000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -46,7 +46,7 @@ def setup():
                             'tau_m'      :  20.0
                         },
                          {
-                            'tau_syn_ex' :   1.0,
+                            'tau_syn_ex' :   1.1,
                             'tau_syn_in' :   0.5,
                             'tau_m'      :  13.0
                         },
