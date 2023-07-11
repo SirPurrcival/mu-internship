@@ -1,10 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jun  7 12:36:13 2023
 
-@author: meowlin
-"""
 import subprocess
 import os
 import time
@@ -27,35 +21,52 @@ params['verbose']  = True
 params['opt_run']  = True
 
 opt_results = {
-    'tau_m'      : [],
-    'tau_syn_ex' : [],
+    'delta_f'    : [],
+    'k'          : [],
     'CV'         : [],
     'stdev'      : [],
     'mean'       : [],
-    'firing_rate': []
+    'firing_rate': [],
+    'plv'        : []
     }
 
 ## Change values and run the function with different parameters
 iteration = 1
 
-tau_m_range = range(5,21,1)
-tau_syn_ex_range = np.arange(1.3, 2.1, 0.1)
+ei_range = np.arange(1,4.1,0.25)
+
+## Based on parameter exploration: (tau_syn_ex, tau_m)
+delta_f_range = [(0.8, 18),(0.9, 16),(0.9, 17), (0.9, 18), (0.9, 19), (1.0, 16), (1.0, 18), (1.0, 19)]
+
+k_range = np.arange(0.0, 0.25, 0.025)
 
 
-total_iter = len(tau_m_range) * len(tau_syn_ex_range)
+total_iter = len(delta_f_range) * len(k_range)
 
-for tau_m in tau_m_range:
-    for tau_syn_ex in tau_syn_ex_range:
+for delta_f in delta_f_range:
+    for k in k_range:
         i = 0
         print(f"================= Iteration {iteration} of {total_iter} =================")
         print("Starting step...")
         st = time.time()
-        params['cell_params'][i]['tau_m']      = tau_m
-        params['cell_params'][i]['tau_syn_ex'] = tau_syn_ex
+        params['cell_params'][2]['tau_syn_ex']  = delta_f[0]
+        params['cell_params'][2]['tau_m']       = delta_f[1]
+        params['interlaminar_connections']      = k
         
         ## Save parameter values used
-        opt_results['tau_m'].append(tau_m)
-        opt_results['tau_syn_ex'].append(tau_syn_ex)
+        opt_results['delta_f'].append(delta_f)
+        opt_results['k'].append(k)
+        
+        ei = params['E/I ratio']
+        
+        params['interlaminar'] = np.array(
+            ##            Target
+            ##    E1              I1                E2           I2 
+                [[0.           , 0.          , k*(1-(1/ei)), k*(1-(1/ei))], ## E1
+                 [0.           , 0.          , k*(1/ei)    , k*(1/ei)    ], ## I1   Source
+                 [k*(1-(1/ei)) , k*(1-(1/ei)), 0.          , 0.          ], ## E2
+                 [k*(1/ei)     , k*(1/ei)    , 0.          , 0.          ]] ## I2
+                )
         
         #params['cell_params'][i]['tau_syn_in'] = tau_syn_in
         
@@ -96,6 +107,9 @@ for tau_m in tau_m_range:
         opt_results['mean'].append(data['ISI_mean'])
         opt_results['stdev'].append(data['ISI_std'])
         opt_results['firing_rate'].append(data['firing_rate'])
+        opt_results['plv'].append(data['PLV'])
+        
+        print(f"k: {k}, ei: {ei}\nPLV: {data['PLV']}")
         
         print(f"Duration of iteration iteration: {time.time() - st}")
         iteration += 1
@@ -109,7 +123,7 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     ## Set values for invalid trials to black
     masked_data = np.ma.masked_where(plot_pop==-1, plot_pop)
 
-    cmap = plt.get_cmap('viridis').copy()
+    cmap = plt.get_cmap('jet').copy()
     cmap.set_bad(color='black')
     
     ## Plot
@@ -136,9 +150,11 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     
     # Remove minor ticks
     ax.tick_params(which='minor', bottom=False, left=False)
+    ax.invert_yaxis()
     
-    plt.xlabel(r"$\tau_{m}$", fontsize=18)
-    plt.ylabel(r"$\tau_{syn-ex}$", fontsize=18)
+    
+    plt.xlabel(r"$\Delta$f", fontsize=18)
+    plt.ylabel("conn strength", fontsize=18)
     
     plt.colorbar(heatmap)
     
@@ -148,19 +164,15 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     
 
 ## Axis data
-tau_m_data      = np.unique(opt_results['tau_m'])
-tau_syn_ex_data = np.unique(opt_results['tau_syn_ex'])
+#ei_data  = np.unique(opt_results['ei'])
+delta_f_data = range(len(delta_f_range))
+k_data = np.unique(opt_results['k'])
 
 ## Get data for population 1
-CV_data   = [x[0] if type(x) == np.ndarray else x for x in opt_results['CV']]
-mean_data = [x[0] if type(x) == np.ndarray else x for x in opt_results['mean']]
-std_data  = [x[0] if type(x) == np.ndarray else x for x in opt_results['stdev']]
-fr_data   = [x[0] if type(x) == np.ndarray else x for x in opt_results['firing_rate']]
+plv_data = opt_results['plv']
 ## Plot heatmaps
-plot_heatmap(tau_m_data, tau_syn_ex_data, CV_data, "Coefficient of variation", round_to = 1)
-plot_heatmap(tau_m_data, tau_syn_ex_data, mean_data, "Mean")
-plot_heatmap(tau_m_data, tau_syn_ex_data, std_data, "Standard Deviation")
-plot_heatmap(tau_m_data, tau_syn_ex_data, fr_data, "Firing rate")
+plot_heatmap(delta_f_data, k_data, plv_data, "PLV", round_to = 1)
+
 
 
 

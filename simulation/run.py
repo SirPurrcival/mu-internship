@@ -3,7 +3,7 @@
 ######################
 import numpy as np
 import nest
-from functions import Network, raster, rate, get_irregularity, get_synchrony, get_firing_rate, create_spectrogram, spectral_density, split_mmdata, compute_plv
+from functions import Network, raster, rate, create_spectrogram, spectral_density, split_mmdata, compute_plv, analyze_spike_trains, ISI
 import time
 import pickle
 import pandas as pd
@@ -27,6 +27,8 @@ if params['verbose'] and rank == 0:
     ## get the start time
     st = time.time()
 
+seed = 13515
+
 ########################
 ## Set NEST Variables ##
 ########################
@@ -40,13 +42,17 @@ nest.overwrite_files = True
 nest.data_path = "data/"
 ## Some random prefix that is given to all files (i.e. the trial number)
 nest.data_prefix = "sim_data_"
+nest.rng_seed = seed
+np.random.seed(seed)
 
 #####################
 # Scale the network #
 #####################
 
+## Doesnt do anything yet, ignore
 synaptic_strength = params['syn_strength'] * params['syn_scale']
-connections       = params['connectivity'] * params['K_scale']
+interlaminar      = params['interlaminar'] * params['K_scale']
+intralaminar      = params['intralaminar'] * params['K_scale']
 num_neurons       = params['num_neurons']  * params['N_scale']
 ext_rates         = params['ext_nodes']    * params['ext_rate']
 
@@ -75,8 +81,10 @@ def create_network(params):
                                          'delay': 1.5})
     
     ###############################################################################
-    ## Connect the network
-    network.connect_all(params['pop_name'], connections, params['syn_type'], synaptic_strength)
+    ## Connect the network. Do intralaminar first so that network will aways be the same regardless
+    ## of interlaminar connections
+    network.connect_all(params['pop_name'], intralaminar, params['syn_type'], synaptic_strength)
+    network.connect_all(params['pop_name'], interlaminar, params['syn_type'], synaptic_strength)
     
     ###############################################################################
     ## Add thalamic input
@@ -111,12 +119,85 @@ second_net = params['second_net']
 network1 = create_network(params)
 if second_net:
     network2 = create_network(params)
-        
+    
+stimulus = nest.Create('poisson_generator')
+stimulus.rate = 500
+stimulus.start = params['rec_start']
+stimulus.stop = params['rec_stop']
+
+nest.Connect(stimulus, network1.get_pops()["L2_E"], {'rule': 'all_to_all'}, {'weight': params['ext_weights'][0],'delay': 1.5})
+
 
 ###############################################################################
 ## Connect networks here
 
-        
+if second_net:
+    
+    net1_pops = network1.get_pops()
+    net2_pops = network2.get_pops()
+    
+    for popa, i in zip(network1.get_pops(), range(len(network1.get_pops()))):
+        for popb, j in zip(network2.get_pops(), range(len(network2.get_pops()))):
+            
+            
+            # 'net1_net2_connections': np.array(
+            #     ##            Target
+            #     ##    Net2_E1        Net2_I1       Net2_E2       Net2_I2 
+            #         [[0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_E1
+            #          [0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_I1   Source
+            #          [0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_E2
+            #          [0.1          , 0.1         , 0.1         , 0.1         ]] ## Net1_I2
+            #         ),
+            
+            if params['syn_type'][i,j] == "E":
+                receptor_type = 1
+                w_min = 0.0
+                w_max = np.inf
+            else:
+                receptor_type = 2
+                w_min = np.NINF
+                w_max = 0.0
+                
+            weight = nest.math.redraw(nest.random.normal(
+                mean = params['syn_strength'][i,j],
+                std=abs(params['syn_strength'][i,j]) * params['sd']),
+                min=w_min,
+                max=w_max)
+            delay = nest.math.redraw(nest.random.normal(
+                mean = 1.5 if params['syn_strength'][i,j] == "E" else 0.75,
+                std=abs(1.5*0.5) if params['syn_strength'][i,j] == "E" else abs(0.75*0.5)),
+                min=params['resolution'], 
+                max=np.Inf)
+            
+            nest.Connect(net1_pops[popa], net2_pops[popb],
+                         conn_spec = {'rule': 'fixed_indegree', 
+                                      'indegree': int(params['net1_net2_connections'][i,j] * len(net1_pops[popa]))},
+                         syn_spec = {"weight": weight, "delay": delay})#, "receptor_type": receptor_type})
+            
+            if params['syn_type'][j,i] == "E":
+                receptor_type = 1
+                w_min = 0.0
+                w_max = np.inf
+            else:
+                receptor_type = 2
+                w_min = np.NINF
+                w_max = 0.0
+                
+            weight = nest.math.redraw(nest.random.normal(
+                mean = params['syn_strength'][j,i],
+                std=abs(params['syn_strength'][j,i]) * params['sd']),
+                min=w_min,
+                max=w_max)
+            delay = nest.math.redraw(nest.random.normal(
+                mean = 1.5 if params['syn_strength'][j,i] == "E" else 0.75,
+                std=abs(1.5*0.5) if params['syn_strength'][j,i] == "E" else abs(0.75*0.5)),
+                min=params['resolution'], 
+                max=np.Inf)
+            
+            nest.Connect(net2_pops[popb], net1_pops[popa], 
+                         conn_spec = {'rule': 'fixed_indegree', 
+                         'indegree': int(params['net2_net1_connections'][j,i] * len(net2_pops[popb]))},
+            syn_spec = {"weight": weight, "delay": delay})#, "receptor_type": receptor_type})
 
 
 ###############################################################################
@@ -221,6 +302,7 @@ if rank == 0:
             results['ISI_std']     = -1
             results['CV']          = -1
             results['firing_rate'] = -1
+            results['PLV']         = -1
             with open("sim_results", 'wb') as f:
                 pickle.dump(results, f)
             raise Exception(f"Run borked, silent neurons in rank {rank}")
@@ -295,121 +377,33 @@ if rank == 0:
         #spectral_density(len(vm_avg_1), params['resolution']*1e-3, vm_avg_2, get_peak=True)
         
     ## Calculate the highest frequency in the data
-    peaks = spectral_density(len(net1_vm_avg_1), params['resolution']*1e-3, [net1_vm_avg_1, net1_vm_avg_2], plot=not params['opt_run'], get_peak=True)
+    peaks_1 = spectral_density(len(net1_vm_avg_1), params['resolution']*1e-3, [net1_vm_avg_1, net1_vm_avg_2], plot=not params['opt_run'], get_peak=True)
+    peaks_2 = spectral_density(len(net2_vm_avg_1), params['resolution']*1e-3, [net2_vm_avg_1, net2_vm_avg_2], plot=not params['opt_run'], get_peak=True)
     
     ## Check for synchronous behaviour
-    for i in range(len(peaks)):
-        if peaks[i] < 0:
+    for i in range(len(peaks_1)):
+        if peaks_1[i] < 0:
             print(f"No synchronous behaviour in network {i+1}")
         else:
-            print(f"Synchronous behaviour in network {i+1} with a peak at {peaks[i]} Hz")
+            print(f"Synchronous behaviour layer {i+1} with a peak at {peaks_1[i]} Hz")
+    
+    for i in range(len(peaks_2)):
+        if peaks_2[i] < 0:
+            print(f"No synchronous behaviour in network {i+1}")
+        else:
+            print(f"Synchronous behaviour layer {i+1} with a peak at {peaks_2[i]} Hz")
             
     
     ## Difference in frequencies between the populations
-    df = abs(peaks[0] - peaks[1])
-        
-        
-    from scipy.signal import correlate, welch
+    df = abs(peaks_1[0] - peaks_1[1])
        
-    def analyze_spike_trains(spike_trains, resolution=0.1):
-        """
-        Parameters are chosen in such a way as to havea frequency resolution of 1Hz. 
-        Time resolution scales with more available data, meaning higher frequency or 
-        longer simulations as nperseg can be maximally as high as the number of data points.
-        """
-        
-        ## Convert resolution to seconds
-        resolution_sec = resolution / 1000.0
-        
-        ## Calculate autocorrelations per neuron
-        autocorrelations = [correlate(spike_train, spike_train[::-1], mode='full') for spike_train in spike_trains]
-        
-        ## Calculate power spectral densities
-        power_spectral_densities = [welch(autocorr, 
-                                          fs=1 / resolution_sec, 
-                                          nperseg=min(len(autocorr), int(1 / resolution_sec)), 
-                                          nfft=int(1 / resolution_sec)) for autocorr in autocorrelations]
-        
-        ## Restrict the frequency range
-        power_spectral_densities = [(freqs[valid_indices], powers[valid_indices]) for freqs, powers in power_spectral_densities \
-                                    if len(valid_indices := np.where((freqs >= 5) & (freqs <= 100))[0]) > 0]
-            
     
-        ## Frequency bands of potential interest (mostly beta and gamma)
-        frequency_bands = {
-            'theta': (4 ,  8),
-            'alpha': (8 , 12),
-            'beta' : (13, 30),
-            'gamma': (30, 80)
-        }
-        
-        ## Compute the total power per neuron in each of the previously defined
-        ## frequency bands. Probably needs to be normalized
-        ## TODO: Normalize
-        band_powers = {band: [] for band in frequency_bands}
-    
-        for power_spectrum in power_spectral_densities:
-            freqs, powers = power_spectrum
-            for band, (fmin, fmax) in frequency_bands.items():
-                band_indices = np.where((freqs >= fmin) & (freqs <= fmax))[0]
-                if len(band_indices) > 0:
-                    band_power = np.sum(powers[band_indices])
-                    band_powers[band].append(band_power)
-                else:
-                    band_powers[band].append(0)
-        
-        ## Compute measures of synchrony
-        synchrony_measures = {}
-    
-        ## Peak coherence. Frequency with the highest power
-        synchrony_measures['peak_coherence'] = [np.argmax(powers) for freqs, powers in power_spectral_densities]
-    
-        ## Total power
-        synchrony_measures['total_power'] = [np.sum(powers) for _, powers in power_spectral_densities]
-    
-        gamma_power = np.mean(band_powers['gamma'])
-        theta_power = np.mean(band_powers['theta'])
-        synchrony_measures['gamma_to_theta_ratio'] = gamma_power / theta_power
-        
-        out_dict = {
-            'autocorrelations'        : autocorrelations,
-            'power spectral densities': power_spectral_densities,
-            'band powers'             : band_powers,
-            'synchrony measures'      : synchrony_measures
-            }
-        
-        return  out_dict
             
     outcomes = []
     for data in net1_spike_data:
         outcomes.append(analyze_spike_trains(data))
     
-    # if not params['opt_run']:
-    #     import matplotlib.pyplot as plt
-    #     for outcome in outcomes:
-    #         for item in outcome['band powers'].values():
-    #             plt.plot(item)
-    #         plt.legend(outcome['band powers'].keys())
-    #         plt.show()
-    #     if params['verbose'] and rank == 0:
-    #         print(f"Done. Final time: {time.time() - st}")
-    
-    ###########################################################################
-    ## Calculate measures 
-    # irregularity = [get_irregularity(population) for population in spike_data]
-    # firing_rate  = [get_firing_rate(population, params['rec_start'], params['rec_stop']) for population in spike_data]
-    # synchrony    = [get_synchrony(population, params['rec_start'], params['rec_stop']) for population in spike_data]
-    
-    
-    def ISI(data):
-        return np.concatenate([np.diff(d) for d in data])
-    
-    def calculate_CV(isi_data):
-        isi_mean = np.mean(isi_data)
-        isi_std = np.std(isi_data)
-        cv = isi_std / isi_mean
-        return cv
-    
+
     net1_ISI_data = [ISI(d) for d in net1_spike_data]
     net1_ISI_mean = [np.mean(d) for d in net1_ISI_data]
     net1_ISI_std  = [np.std(d) for d in net1_ISI_data]
@@ -417,11 +411,11 @@ if rank == 0:
     
     ## 
     spk_upper = np.sort(np.concatenate(net1_spike_data[0]))
-    spk_lower = np.sort(np.concatenate(net1_spike_data[2]))
+    spk_lower = np.sort(np.concatenate(net2_spike_data[0]))
     
-    plv = compute_plv(spk_upper, spk_lower, params['resolution'], (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
+    plv = compute_plv(spk_upper, spk_lower, t_sim = (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
     print("Phase-Locking Value (PLV):", plv)
-
+    
     results['PLV']         = plv
     results['ISI_mean']    = np.array(net1_ISI_mean)
     results['firing_rate'] = 1/(np.array(net1_ISI_mean)/1000)

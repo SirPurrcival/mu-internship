@@ -1,14 +1,6 @@
 import numpy as np
 import pickle
 
-## Make E/I ratio
-## Make total connections value (percentage)
-
-## Figure out gamma range
-## Figure out beta range
-
-## spectral density plot
-
 def setup():
     #######################################
     ## Set parameters for the simulation ##
@@ -16,9 +8,9 @@ def setup():
     ## Recording and simulation parameters
     params = {
         'rec_start'  :    200.,                                                # start point for data recording
-        'rec_stop'   :   4000.,                                                # end points for data recording
+        'rec_stop'   :   1000.,                                                # end points for data recording
         'record_to'  : 'memory',
-        'sim_time'   :   4000.,                                                # Time the network is simulated in ms
+        'sim_time'   :   1000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -32,13 +24,13 @@ def setup():
         'th_in'      :      0.,                                                # Thalamic input in Hz
         'th_start'   :    500.,
         'th_stop'    :    510.,
-        'second_net' :    False,
+        'second_net' :    True,
         'num_neurons': np.array([400, 100, 400, 100]),
         'sd'         :  0.1,
         'cell_params'  : [{
-                            'tau_syn_ex' :   1.2,
+                            'tau_syn_ex' :   1.0,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  14.0
+                            'tau_m'      :  19.0
                         },
                         {
                             'tau_syn_ex' :   0.5,
@@ -46,9 +38,9 @@ def setup():
                             'tau_m'      :  20.0
                         },
                          {
-                            'tau_syn_ex' :   1.1,
+                            'tau_syn_ex' :   0.8,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  13.0
+                            'tau_m'      :  18.0
                         },
                         {
                             'tau_syn_ex' :   0.5,
@@ -58,23 +50,23 @@ def setup():
         
         'pop_name'   : ['L1_E', 'L1_I',
                         'L2_E' , 'L2_I'],
-        'interlaminar_connections': 0.0,
-        'E/I ratio'               :  1., 
+        'interlaminar_connections': 0.1,
+        'E/I ratio'               :  2., 
         'net1_net2_connections': np.array(
             ##            Target
             ##    Net2_E1        Net2_I1       Net2_E2       Net2_I2 
-                [[0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_E1
-                 [0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_I1   Source
-                 [0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_E2
-                 [0.1          , 0.1         , 0.1         , 0.1         ]] ## Net1_I2
+                [[0.05          , 0.05       , 0.0      , 0.0         ], ## Net1_E1
+                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net1_I1   Source
+                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net1_E2
+                 [0.0          , 0.0         , 0.0         , 0.0         ]] ## Net1_I2
                 ),
         'net2_net1_connections': np.array(
             ##            Target
             ##    Net1_E1        Net1_I1       Net1_E2       Net1_I2 
-                [[0.1          , 0.1         , 0.1         , 0.1         ], ## Net2_E1
-                 [0.1          , 0.1         , 0.1         , 0.1         ], ## Net2_I1   Source
-                 [0.1          , 0.1         , 0.1         , 0.1         ], ## Net2_E2
-                 [0.1          , 0.1         , 0.1         , 0.1         ]] ## Net2_I2
+                [[0.05          , 0.05         , 0.0         , 0.0         ], ## Net2_E1
+                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net2_I1   Source
+                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net2_E2
+                 [0.0          , 0.0         , 0.0         , 0.0         ]] ## Net2_I2
                 )
         }
     
@@ -85,13 +77,21 @@ def setup():
     # Connectivity matrix
     k = params['interlaminar_connections']
     ei = params['E/I ratio']               
-    params['connectivity'] = np.array(
+    params['intralaminar'] = np.array(
         ##            Target
         ##    E1              I1                E2           I2 
-            [[0.1          , 0.25         , k*(1-(1/ei)), k*(1-(1/ei))], ## E1
-             [0.5          , 0.25        , k*(1/ei)    , k*(1/ei)    ], ## I1   Source
-             [k*(1-(1/ei)) , k*(1-(1/ei)), 0.1         , 0.25         ], ## E2
-             [k*(1/ei)     , k*(1/ei)    , 0.5         , 0.25        ]] ## I2
+            [[0.1          , 0.25        , 0.          , 0.           ], ## E1
+             [0.5          , 0.25        , 0.          , 0.           ], ## I1   Source
+             [0.           , 0.          , 0.1         , 0.25         ], ## E2
+             [0.           , 0.          , 0.5         , 0.25        ]] ## I2
+            )
+    params['interlaminar'] = np.array(
+        ##            Target
+        ##    E1              I1                E2           I2 
+            [[0.           , 0.          , k*(1-(1/ei)), k*(1-(1/ei))], ## E1
+             [0.           , 0.          , k*(1/ei)    , k*(1/ei)    ], ## I1   Source
+             [k*(1-(1/ei)) , k*(1-(1/ei)), 0.          , 0.          ], ## E2
+             [k*(1/ei)     , k*(1/ei)    , 0.          , 0.          ]] ## I2
             )
     
     ################################
@@ -119,8 +119,8 @@ def setup():
 
     params['ext_rate'] = 30.0
     params['ext_nodes']   = np.array(
-        [100, 20, 
-         100, 20])
+        [100, 30, 
+         100, 30])
     
     weight = syn_strength
     

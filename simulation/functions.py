@@ -3,7 +3,7 @@ import numpy as np
 import nest
 import itertools
 import random
-from scipy.signal import butter, filtfilt, hilbert, find_peaks
+from scipy.signal import butter, filtfilt, hilbert, find_peaks, correlate, welch
 
 ## 
 # Create classes
@@ -721,42 +721,110 @@ def get_mean_spike_rate(times, params):
     times = times[times >= params['transient']]
     return times.size /  (params['sim_time'] - params['transient']) * 1000
 
-def compute_plv(spikes_1, spikes_2, resolution, t_sim, bin_size, transient):
-    # Phase using the Hilbert Transform
-    Fn = 1000 / resolution  # sampling frequency
-    Fbp = [15, 60]  # bandpass filter
+from scipy.signal import butter, filtfilt, hilbert
+import numpy as np
+import matplotlib.pyplot as plt
+
+def compute_plv(spikes_1, spikes_2, t_sim, bin_size, transient):
+    # Sampling frequency
+    Fn = 1000 / bin_size  # sampling frequency
 
     # Create spike histograms with the specified bin size
-    hist1, _ = np.histogram(spikes_1-200, bins=np.arange(0, t_sim, bin_size))
-    hist2, _ = np.histogram(spikes_2-200, bins=np.arange(0, t_sim, bin_size))
+    hist1, _ = np.histogram(spikes_1 - transient, bins=np.arange(0, t_sim, bin_size))
+    hist2, _ = np.histogram(spikes_2 - transient, bins=np.arange(0, t_sim, bin_size))
 
+    # Bandpass filter
+    Fbp = [15, 60]  # bandpass filter
+    B, A = butter(4, np.array(Fbp) / (Fn / 2), btype='bandpass')
 
-    # Apply bandpass filter and Hilbert transform to obtain analytic signals
-    B, A = butter(4, np.array([np.min(Fbp) / Fn, np.max(Fbp) / Fn]), btype='bandpass')
-    signal1 = filtfilt(B, A, hist1)
-    signal1 = hilbert(signal1)
+    # Apply bandpass filter to obtain filtered signals
+    filtered1 = filtfilt(B, A, hist1)
+    filtered2 = filtfilt(B, A, hist2)
 
-    signal2 = filtfilt(B, A, hist2)
-    signal2 = hilbert(signal2)
-
-    plt.plot(signal1)
-    plt.plot(signal2)
+    # Apply Hilbert transform to obtain analytic signals
+    signal1 = hilbert(filtered1)
+    signal2 = hilbert(filtered2)
 
     # Calculate the phases of the analytic signals
     phase1 = np.angle(signal1)
     phase2 = np.angle(signal2)
     
-    plv = np.abs(np.mean(np.exp(-1j*(phase1-phase2))))
-    
-    # # Calculate the complex-valued signals
-    # signal_1 = np.exp(1j * phase1)
-    # signal_2 = np.exp(1j * phase2)
-    
-    # ## Compute phase difference
-    # phase_diff = np.angle(signal_1 / signal_2)
+    plt.plot(phase1)
+    plt.plot(phase2)
 
-    # # Compute the phase locking value
-    # plv = np.abs(np.mean(np.exp(1j * phase_diff)))
+    # Calculate the PLV
+    plv = np.abs(np.mean(np.exp(-1j * (phase1 - phase2))))
 
     return plv
 
+def analyze_spike_trains(spike_trains, resolution=0.1):
+    """
+    Parameters are chosen in such a way as to havea frequency resolution of 1Hz. 
+    Time resolution scales with more available data, meaning higher frequency or 
+    longer simulations as nperseg can be maximally as high as the number of data points.
+    """
+    
+    ## Convert resolution to seconds
+    resolution_sec = resolution / 1000.0
+    
+    ## Calculate autocorrelations per neuron
+    autocorrelations = [correlate(spike_train, spike_train[::-1], mode='full') for spike_train in spike_trains]
+    
+    ## Calculate power spectral densities
+    power_spectral_densities = [welch(autocorr, 
+                                      fs=1 / resolution_sec, 
+                                      nperseg=min(len(autocorr), int(1 / resolution_sec)), 
+                                      nfft=int(1 / resolution_sec)) for autocorr in autocorrelations]
+    
+    ## Restrict the frequency range
+    power_spectral_densities = [(freqs[valid_indices], powers[valid_indices]) for freqs, powers in power_spectral_densities \
+                                if len(valid_indices := np.where((freqs >= 5) & (freqs <= 100))[0]) > 0]
+        
+
+    ## Frequency bands of potential interest (mostly beta and gamma)
+    frequency_bands = {
+        'theta': (4 ,  8),
+        'alpha': (8 , 12),
+        'beta' : (13, 30),
+        'gamma': (30, 80)
+    }
+    
+    ## Compute the total power per neuron in each of the previously defined
+    ## frequency bands. Probably needs to be normalized
+    ## TODO: Normalize
+    band_powers = {band: [] for band in frequency_bands}
+
+    for power_spectrum in power_spectral_densities:
+        freqs, powers = power_spectrum
+        for band, (fmin, fmax) in frequency_bands.items():
+            band_indices = np.where((freqs >= fmin) & (freqs <= fmax))[0]
+            if len(band_indices) > 0:
+                band_power = np.sum(powers[band_indices])
+                band_powers[band].append(band_power)
+            else:
+                band_powers[band].append(0)
+    
+    ## Compute measures of synchrony
+    synchrony_measures = {}
+
+    ## Peak coherence. Frequency with the highest power
+    synchrony_measures['peak_coherence'] = [np.argmax(powers) for freqs, powers in power_spectral_densities]
+
+    ## Total power
+    synchrony_measures['total_power'] = [np.sum(powers) for _, powers in power_spectral_densities]
+
+    gamma_power = np.mean(band_powers['gamma'])
+    theta_power = np.mean(band_powers['theta'])
+    synchrony_measures['gamma_to_theta_ratio'] = gamma_power / theta_power
+    
+    out_dict = {
+        'autocorrelations'        : autocorrelations,
+        'power spectral densities': power_spectral_densities,
+        'band powers'             : band_powers,
+        'synchrony measures'      : synchrony_measures
+        }
+    
+    return  out_dict
+
+def ISI(data):
+    return np.concatenate([np.diff(d) for d in data])

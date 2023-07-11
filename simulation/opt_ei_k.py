@@ -66,6 +66,15 @@ for ei in ei_range:
         opt_results['ei'].append(ei)
         opt_results['k'].append(k)
         
+        params['interlaminar'] = np.array(
+            ##            Target
+            ##    E1              I1                E2           I2 
+                [[0.           , 0.          , k*(1-(1/ei)), k*(1-(1/ei))], ## E1
+                 [0.           , 0.          , k*(1/ei)    , k*(1/ei)    ], ## I1   Source
+                 [k*(1-(1/ei)) , k*(1-(1/ei)), 0.          , 0.          ], ## E2
+                 [k*(1/ei)     , k*(1/ei)    , 0.          , 0.          ]] ## I2
+                )
+        
         #params['cell_params'][i]['tau_syn_in'] = tau_syn_in
         
         ## Write parameters to file so the network can read it in
@@ -107,6 +116,8 @@ for ei in ei_range:
         opt_results['firing_rate'].append(data['firing_rate'])
         opt_results['plv'].append(data['PLV'])
         
+        print(f"k: {k}, ei: {ei}\nPLV: {data['PLV']}")
+        
         print(f"Duration of iteration iteration: {time.time() - st}")
         iteration += 1
             
@@ -146,6 +157,8 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
     
     # Remove minor ticks
     ax.tick_params(which='minor', bottom=False, left=False)
+    ax.invert_yaxis()
+    
     
     plt.xlabel(r"E/I Ratio", fontsize=18)
     plt.ylabel("Interlaminar connections", fontsize=18)
