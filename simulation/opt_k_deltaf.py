@@ -168,10 +168,16 @@ def plot_heatmap(tau_m, tau_syn_ex, data, title, round_to=0):
 delta_f_data = range(len(delta_f_range))
 k_data = np.unique(opt_results['k'])
 
+
 ## Get data for population 1
 plv_data = opt_results['plv']
+fr1_data   = [x[0] if type(x) == np.ndarray else x for x in opt_results['firing_rate']]
+fr2_data   = [x[2] if type(x) == np.ndarray else x for x in opt_results['firing_rate']]
+
 ## Plot heatmaps
 plot_heatmap(delta_f_data, k_data, plv_data, "PLV", round_to = 1)
+plot_heatmap(delta_f_data, k_data, fr1_data, "Upper layer FR", round_to = 0)
+plot_heatmap(delta_f_data, k_data, fr2_data, "Lower layer FR", round_to = 0)
 
 
 

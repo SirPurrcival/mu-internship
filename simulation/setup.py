@@ -8,9 +8,9 @@ def setup():
     ## Recording and simulation parameters
     params = {
         'rec_start'  :    200.,                                                # start point for data recording
-        'rec_stop'   :   1000.,                                                # end points for data recording
+        'rec_stop'   :   2000.,                                                # end points for data recording
         'record_to'  : 'memory',
-        'sim_time'   :   1000.,                                                # Time the network is simulated in ms
+        'sim_time'   :   2000.,                                                # Time the network is simulated in ms
         'calc_lfp'   :   False,                                                # Flag to use LFP approximation procedure
         'verbose'    :    True,                                                # Flag for verbose function output
         'K_scale'    :      1.,                                                # Scaling factor for connections
@@ -25,9 +25,30 @@ def setup():
         'th_start'   :    500.,
         'th_stop'    :    510.,
         'second_net' :    True,
+        'deep_input' :       0,
         'num_neurons': np.array([400, 100, 400, 100]),
         'sd'         :  0.1,
-        'cell_params'  : [{
+        'cell_params_net1'  : [{
+                            'tau_syn_ex' :   1.0,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  19.0
+                        },
+                        {
+                            'tau_syn_ex' :   0.5,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  20.0
+                        },
+                         {
+                            'tau_syn_ex' :   0.8,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  18.0
+                        },
+                        {
+                            'tau_syn_ex' :   0.5,
+                            'tau_syn_in' :   0.5,
+                            'tau_m'      :  20.0
+                        }],
+        'cell_params_net2'  : [{
                             'tau_syn_ex' :   1.0,
                             'tau_syn_in' :   0.5,
                             'tau_m'      :  19.0
@@ -52,23 +73,27 @@ def setup():
                         'L2_E' , 'L2_I'],
         'interlaminar_connections': 0.1,
         'E/I ratio'               :  2., 
-        'net1_net2_connections': np.array(
-            ##            Target
-            ##    Net2_E1        Net2_I1       Net2_E2       Net2_I2 
-                [[0.05          , 0.05       , 0.0      , 0.0         ], ## Net1_E1
-                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net1_I1   Source
-                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net1_E2
-                 [0.0          , 0.0         , 0.0         , 0.0         ]] ## Net1_I2
-                ),
-        'net2_net1_connections': np.array(
-            ##            Target
-            ##    Net1_E1        Net1_I1       Net1_E2       Net1_I2 
-                [[0.05          , 0.05         , 0.0         , 0.0         ], ## Net2_E1
-                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net2_I1   Source
-                 [0.0          , 0.0         , 0.0         , 0.0         ], ## Net2_E2
-                 [0.0          , 0.0         , 0.0         , 0.0         ]] ## Net2_I2
-                )
-        }
+        'intercircuit_strength'   : 0.05
+    }
+    
+    ck = params['intercircuit_strength']
+    
+    params['net1_net2_connections'] = np.array(
+        ##            Target
+        ##    Net2_E1        Net2_I1       Net2_E2       Net2_I2 
+            [[ck           , ck          , 0.0         , 0.0         ], ## Net1_E1
+             [0.0          , 0.0         , 0.0         , 0.0         ], ## Net1_I1   Source
+             [0.0          , 0.0         , 0.0         , 0.0         ], ## Net1_E2
+             [0.0          , 0.0         , 0.0         , 0.0         ]] ## Net1_I2
+            )
+    params['net2_net1_connections'] = np.array(
+        ##            Target
+        ##    Net1_E1        Net1_I1       Net1_E2       Net1_I2 
+            [[ck           , ck          , 0.0         , 0.0         ], ## Net2_E1
+             [0.0          , 0.0         , 0.0         , 0.0         ], ## Net2_I1   Source
+             [0.0          , 0.0         , 0.0         , 0.0         ], ## Net2_E2
+             [0.0          , 0.0         , 0.0         , 0.0         ]] ## Net2_I2
+            )
     
     ################################################################
     ## Specify connectivity in and between layers and populations ##

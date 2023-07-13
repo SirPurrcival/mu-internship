@@ -10,8 +10,8 @@ import pandas as pd
 import os
 
 ## Disable this if you run any kind of opt_ script
-from setup import setup
-setup()
+# from setup import setup
+# setup()
 
 ###############################################################################
 ## Load config created by setup()
@@ -60,7 +60,7 @@ ext_rates         = params['ext_nodes']    * params['ext_rate']
 ## Create network ##
 ####################
 
-def create_network(params):
+def create_network(params, net):
     network = Network(params)
     
     ###############################################################################
@@ -69,7 +69,7 @@ def create_network(params):
         print(f"Time required for setup: {time.time() - st}\nRunning Nest with {nest.NumProcesses()} workers")
     
     for i in range(len(params['pop_name'])):
-        network.addpop('iaf_psc_exp', params['pop_name'][i] , int(num_neurons[i]), params['cell_params'][i], record=True, nrec=int(params['R_scale']* num_neurons[i]))
+        network.addpop('iaf_psc_exp', params['pop_name'][i] , int(num_neurons[i]), params[f'cell_params_net{net}'][i], record=True, nrec=int(params['R_scale']* num_neurons[i]))
     
     ###############################################################################
     ## Add background stimulation
@@ -116,12 +116,15 @@ def create_network(params):
 
 second_net = params['second_net']
 
-network1 = create_network(params)
+network1 = create_network(params, 1)
 if second_net:
-    network2 = create_network(params)
-    
+    network2 = create_network(params, 2)
+   
+###############################################################################
+## Deep layer input for network 1 
+   
 stimulus = nest.Create('poisson_generator')
-stimulus.rate = 500
+stimulus.rate = params['deep_input']
 stimulus.start = params['rec_start']
 stimulus.stop = params['rec_stop']
 
@@ -378,7 +381,8 @@ if rank == 0:
         
     ## Calculate the highest frequency in the data
     peaks_1 = spectral_density(len(net1_vm_avg_1), params['resolution']*1e-3, [net1_vm_avg_1, net1_vm_avg_2], plot=not params['opt_run'], get_peak=True)
-    peaks_2 = spectral_density(len(net2_vm_avg_1), params['resolution']*1e-3, [net2_vm_avg_1, net2_vm_avg_2], plot=not params['opt_run'], get_peak=True)
+    if second_net:
+        peaks_2 = spectral_density(len(net2_vm_avg_1), params['resolution']*1e-3, [net2_vm_avg_1, net2_vm_avg_2], plot=not params['opt_run'], get_peak=True)
     
     ## Check for synchronous behaviour
     for i in range(len(peaks_1)):
@@ -387,11 +391,12 @@ if rank == 0:
         else:
             print(f"Synchronous behaviour layer {i+1} with a peak at {peaks_1[i]} Hz")
     
-    for i in range(len(peaks_2)):
-        if peaks_2[i] < 0:
-            print(f"No synchronous behaviour in network {i+1}")
-        else:
-            print(f"Synchronous behaviour layer {i+1} with a peak at {peaks_2[i]} Hz")
+    if second_net:
+        for i in range(len(peaks_2)):
+            if peaks_2[i] < 0:
+                print(f"No synchronous behaviour in network {i+1}")
+            else:
+                print(f"Synchronous behaviour layer {i+1} with a peak at {peaks_2[i]} Hz")
             
     
     ## Difference in frequencies between the populations
@@ -410,17 +415,43 @@ if rank == 0:
     net1_ISI_CV   = [std / mean for std, mean in zip(net1_ISI_std, net1_ISI_mean)]
     
     ## 
-    spk_upper = np.sort(np.concatenate(net1_spike_data[0]))
-    spk_lower = np.sort(np.concatenate(net2_spike_data[0]))
+    if second_net:
+        spk_net1_upper = np.sort(np.concatenate(net1_spike_data[0]))
+        spk_net2_upper = np.sort(np.concatenate(net2_spike_data[0]))
+        
+        spk_net1_upper = np.sort(np.concatenate(net1_spike_data[0]))
+        spk_net1_lower = np.sort(np.concatenate(net1_spike_data[2]))
+        
+        spk_net2_upper = np.sort(np.concatenate(net2_spike_data[0]))
+        spk_net2_lower = np.sort(np.concatenate(net2_spike_data[2]))
+        
+        plv_intracircuit_net1 = compute_plv(spk_net1_upper, spk_net1_lower, t_sim = (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
+        print("Phase-Locking Value (PLV) in network 1:", plv_intracircuit_net1)
+        
+        plv_intracircuit_net2 = compute_plv(spk_net2_upper, spk_net2_lower, t_sim = (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
+        print("Phase-Locking Value (PLV) in network 2:", plv_intracircuit_net1)
+        
+        plv_intercircuit = compute_plv(spk_net1_upper, spk_net2_upper, t_sim = (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
+        print("Phase-Locking Value (PLV) between circuits:", plv_intercircuit)
+        
+    else:
+        spk_upper = np.sort(np.concatenate(net1_spike_data[0]))
+        spk_lower = np.sort(np.concatenate(net1_spike_data[2]))
+        
+        plv_intracircuit_net1 = compute_plv(spk_upper, spk_lower, t_sim = (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
+        print("Phase-Locking Value (PLV) between circuits:", plv_intracircuit_net1)
     
-    plv = compute_plv(spk_upper, spk_lower, t_sim = (params['rec_stop']-params['rec_start']), bin_size=3, transient=params['rec_start'])
-    print("Phase-Locking Value (PLV):", plv)
     
-    results['PLV']         = plv
-    results['ISI_mean']    = np.array(net1_ISI_mean)
-    results['firing_rate'] = 1/(np.array(net1_ISI_mean)/1000)
-    results['ISI_std']     = np.array(net1_ISI_std)
-    results['CV']          = np.array(net1_ISI_CV)
+    
+    if second_net:
+        results['PLV_intercircuit']      = plv_intercircuit
+        results['PLV_intracircuit_net2'] = plv_intracircuit_net2
+    
+    results['PLV_intracircuit_net1'] = plv_intracircuit_net1
+    results['ISI_mean']              = np.array(net1_ISI_mean)
+    results['firing_rate']           = 1/(np.array(net1_ISI_mean)/1000)
+    results['ISI_std']               = np.array(net1_ISI_std)
+    results['CV']                    = np.array(net1_ISI_CV)
     
     ## Write to disk
     with open("sim_results", 'wb') as f:

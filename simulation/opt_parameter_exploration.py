@@ -39,7 +39,7 @@ opt_results = {
 iteration = 1
 
 tau_m_range = range(5,21,1)
-tau_syn_ex_range = np.arange(1.3, 2.1, 0.1)
+tau_syn_ex_range = np.arange(0.5, 2.1, 0.1)
 
 
 total_iter = len(tau_m_range) * len(tau_syn_ex_range)
