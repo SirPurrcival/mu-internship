@@ -62,6 +62,9 @@ for ei in ei_range:
         params['E/I ratio']                = ei
         params['interlaminar_connections'] = k
         
+        ## We're just looking at one of the networks here
+        params['second_net'] = False
+        
         ## Save parameter values used
         opt_results['ei'].append(ei)
         opt_results['k'].append(k)
@@ -118,7 +121,7 @@ for ei in ei_range:
         
         print(f"k: {k}, ei: {ei}\nPLV: {data['PLV']}")
         
-        print(f"Duration of iteration iteration: {time.time() - st}")
+        print(f"Duration of iteration {iteration}: {time.time() - st}")
         iteration += 1
             
 ## Do analysis and figure stuff here

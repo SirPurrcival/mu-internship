@@ -21,17 +21,17 @@ def setup():
         'g'          :     -4.,                                                # Excitation-Inhibition balance
         'resolution' :     0.1,                                                # Resolution of the simulaton
         'transient'  :     200,                                                # Ignore the first x ms of the simulation
-        'th_in'      :      0.,                                                # Thalamic input in Hz
+        'th_in'      :      0.,                                                # Thalamic input in Hz (Not implemented)
         'th_start'   :    500.,
         'th_stop'    :    510.,
-        'second_net' :    True,
+        'second_net' :   False,
         'deep_input' :       0,
         'num_neurons': np.array([400, 100, 400, 100]),
         'sd'         :  0.1,
         'cell_params_net1'  : [{
                             'tau_syn_ex' :   1.0,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  19.0
+                            'tau_m'      :  18.0
                         },
                         {
                             'tau_syn_ex' :   0.5,
@@ -51,7 +51,7 @@ def setup():
         'cell_params_net2'  : [{
                             'tau_syn_ex' :   1.0,
                             'tau_syn_in' :   0.5,
-                            'tau_m'      :  19.0
+                            'tau_m'      :  18.0
                         },
                         {
                             'tau_syn_ex' :   0.5,
@@ -108,7 +108,7 @@ def setup():
             [[0.1          , 0.25        , 0.          , 0.           ], ## E1
              [0.5          , 0.25        , 0.          , 0.           ], ## I1   Source
              [0.           , 0.          , 0.1         , 0.25         ], ## E2
-             [0.           , 0.          , 0.5         , 0.25        ]] ## I2
+             [0.           , 0.          , 0.5         , 0.25         ]] ## I2
             )
     params['interlaminar'] = np.array(
         ##            Target
@@ -144,8 +144,8 @@ def setup():
 
     params['ext_rate'] = 30.0
     params['ext_nodes']   = np.array(
-        [100, 30, 
-         100, 30])
+        [100, 100, 
+         100, 100])
     
     weight = syn_strength
     

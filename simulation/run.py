@@ -16,6 +16,7 @@ import os
 ###############################################################################
 ## Load config created by setup()
 ## It is done this way for optimization procedures that change parameter values
+
 with open("params", 'rb') as f:
    params = pickle.load( f)
 
@@ -87,7 +88,7 @@ def create_network(params, net):
     network.connect_all(params['pop_name'], interlaminar, params['syn_type'], synaptic_strength)
     
     ###############################################################################
-    ## Add thalamic input
+    ## Add thalamic input || NOT IMPLEMENTED || 
     ## TODO: Make this prettier / more compact
     # network.addpop('parrot_neuron', 'thalamic_input', 902)
     # network.add_stimulation(source={'type': 'poisson_generator', 'rate': params['th_in'], 'start': params['th_start'], 'stop': params['th_stop']}, 
@@ -141,16 +142,6 @@ if second_net:
     
     for popa, i in zip(network1.get_pops(), range(len(network1.get_pops()))):
         for popb, j in zip(network2.get_pops(), range(len(network2.get_pops()))):
-            
-            
-            # 'net1_net2_connections': np.array(
-            #     ##            Target
-            #     ##    Net2_E1        Net2_I1       Net2_E2       Net2_I2 
-            #         [[0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_E1
-            #          [0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_I1   Source
-            #          [0.1          , 0.1         , 0.1         , 0.1         ], ## Net1_E2
-            #          [0.1          , 0.1         , 0.1         , 0.1         ]] ## Net1_I2
-            #         ),
             
             if params['syn_type'][i,j] == "E":
                 receptor_type = 1
@@ -301,11 +292,19 @@ if rank == 0:
         print(f"Number of silent neurons in {name}: {silent_neurons}")
         if silent_neurons > 0:
             run_borked = True
-            results['ISI_mean']    = -1
-            results['ISI_std']     = -1
-            results['CV']          = -1
-            results['firing_rate'] = -1
-            results['PLV']         = -1
+            results['net1_ISI_mean']         = -1
+            results['net1_ISI_std']          = -1
+            results['net1_CV']               = -1
+            results['net1_firing_rate']      = -1
+            
+            results['net2_ISI_mean']         = -1
+            results['net2_ISI_std']          = -1
+            results['net2_CV']               = -1
+            results['net2_firing_rate']      = -1
+            
+            results['PLV_intracircuit_net1'] = -1
+            results['PLV_intracircuit_net2'] = -1
+            results['PLV_intercircuit']      = -1
             with open("sim_results", 'wb') as f:
                 pickle.dump(results, f)
             raise Exception(f"Run borked, silent neurons in rank {rank}")
@@ -414,8 +413,12 @@ if rank == 0:
     net1_ISI_std  = [np.std(d) for d in net1_ISI_data]
     net1_ISI_CV   = [std / mean for std, mean in zip(net1_ISI_std, net1_ISI_mean)]
     
-    ## 
     if second_net:
+        net2_ISI_data = [ISI(d) for d in net2_spike_data]
+        net2_ISI_mean = [np.mean(d) for d in net2_ISI_data]
+        net2_ISI_std  = [np.std(d) for d in net2_ISI_data]
+        net2_ISI_CV   = [std / mean for std, mean in zip(net2_ISI_std, net2_ISI_mean)]
+    
         spk_net1_upper = np.sort(np.concatenate(net1_spike_data[0]))
         spk_net2_upper = np.sort(np.concatenate(net2_spike_data[0]))
         
@@ -442,16 +445,21 @@ if rank == 0:
         print("Phase-Locking Value (PLV) between circuits:", plv_intracircuit_net1)
     
     
+    results['PLV_intracircuit_net1'] = plv_intracircuit_net1
+    
+    results['net1_ISI_mean']              = np.array(net1_ISI_mean)
+    results['net1_firing_rate']           = 1/(np.array(net1_ISI_mean)/1000)
+    results['net1_ISI_std']               = np.array(net1_ISI_std)
+    results['net1_CV']                    = np.array(net1_ISI_CV)
     
     if second_net:
         results['PLV_intercircuit']      = plv_intercircuit
         results['PLV_intracircuit_net2'] = plv_intracircuit_net2
-    
-    results['PLV_intracircuit_net1'] = plv_intracircuit_net1
-    results['ISI_mean']              = np.array(net1_ISI_mean)
-    results['firing_rate']           = 1/(np.array(net1_ISI_mean)/1000)
-    results['ISI_std']               = np.array(net1_ISI_std)
-    results['CV']                    = np.array(net1_ISI_CV)
+        
+        results['net2_ISI_mean']              = np.array(net2_ISI_mean)
+        results['net2_firing_rate']           = 1/(np.array(net2_ISI_mean)/1000)
+        results['net2_ISI_std']               = np.array(net2_ISI_std)
+        results['net2_CV']                    = np.array(net2_ISI_CV)
     
     ## Write to disk
     with open("sim_results", 'wb') as f:
